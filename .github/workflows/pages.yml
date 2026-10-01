@@ -29,6 +29,11 @@ jobs:
         id: assets
         run: |
           node -e 'const fs=require("fs"); const html=fs.readFileSync("dist/index.html","utf8"); console.log("entry="+html.match(/src="([^"]+\.js)"/)[1]); console.log("wasm=./assets/"+fs.readdirSync("dist/assets").find(f=>f.endsWith(".wasm")))' >> "$GITHUB_OUTPUT"
+      - name: Use Ubuntu main mirror for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i -E 's@https?://azure.archive.ubuntu.com/ubuntu@http://archive.ubuntu.com/ubuntu@g' /etc/apt/apt-mirrors.txt
+          fi
       - name: Install browser engines
         timeout-minutes: 10
         run: npx playwright install --with-deps chromium firefox webkit
