@@ -34,7 +34,7 @@ node scripts/serve.mjs
 npm run test:browser
 ```
 
-Browser tests use `/usr/bin/chromium` when present, `CHROMIUM_PATH` when supplied, or Playwright's installed Chromium. On a fresh machine run `npx playwright install --with-deps chromium`.
+Browser tests use `/usr/bin/chromium` when present, `CHROMIUM_PATH` when supplied, or Playwright's installed Chromium. On a fresh machine run `npx playwright install --with-deps chromium`. CI also installs Firefox and WebKit and runs all three engines with `CROSS_BROWSER=1 npm run test:browser`.
 
 ## Headless analysis
 

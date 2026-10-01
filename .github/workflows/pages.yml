@@ -29,8 +29,10 @@ jobs:
         id: assets
         run: |
           node -e 'const fs=require("fs"); const html=fs.readFileSync("dist/index.html","utf8"); console.log("entry="+html.match(/src="([^"]+\.js)"/)[1]); console.log("wasm=./assets/"+fs.readdirSync("dist/assets").find(f=>f.endsWith(".wasm")))' >> "$GITHUB_OUTPUT"
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:browser
+        env:
+          CROSS_BROWSER: "1"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
