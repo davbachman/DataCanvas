@@ -1,0 +1,65 @@
+name: Test and deploy Data Canvas
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    outputs:
+      entry: ${{ steps.assets.outputs.entry }}
+      wasm: ${{ steps.assets.outputs.wasm }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Record production assets
+        id: assets
+        run: |
+          node -e 'const fs=require("fs"); const html=fs.readFileSync("dist/index.html","utf8"); console.log("entry="+html.match(/src="([^"]+\.js)"/)[1]); console.log("wasm=./assets/"+fs.readdirSync("dist/assets").find(f=>f.endsWith(".wasm")))' >> "$GITHUB_OUTPUT"
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Verify published page and execution assets
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          EXPECTED_ENTRY: ${{ needs.build.outputs.entry }}
+          EXPECTED_WASM: ${{ needs.build.outputs.wasm }}
+        run: |
+          for attempt in $(seq 1 18); do
+            if curl --fail --silent --show-error "$PAGE_URL" -o /tmp/datacanvas-live.html && grep -Fq "$EXPECTED_ENTRY" /tmp/datacanvas-live.html; then
+              curl --fail --silent --show-error "${PAGE_URL}${EXPECTED_ENTRY#./}" -o /dev/null
+              curl --fail --silent --show-error --head "${PAGE_URL}${EXPECTED_WASM#./}"
+              echo "Published Data Canvas and matching execution assets verified at $PAGE_URL"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Published page did not expose the expected build."
+          exit 1

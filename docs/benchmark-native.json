@@ -1,0 +1,33 @@
+{
+  "repeatedRunMs": 52.04657499999939,
+  "date": "2026-10-01T16:42:58.142Z",
+  "runtime": "v24.19.0",
+  "engine": "v1.5.4",
+  "platform": "linux",
+  "architecture": "x64",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "logicalCPUs": 5,
+  "rows": 100000,
+  "sourceColumns": 20,
+  "mainOperations": 20,
+  "lookupRows": 10000,
+  "coldStartMs": 12.31217300000003,
+  "warmQueryMs": 2.048370000000432,
+  "fullPipelineMs": 4099.066739,
+  "memoryBefore": {
+    "rss": 331493376,
+    "heapTotal": 169656320,
+    "heapUsed": 28853504,
+    "external": 16471000,
+    "arrayBuffers": 13884788
+  },
+  "memoryAfter": {
+    "rss": 785195008,
+    "heapTotal": 256241664,
+    "heapUsed": 111155944,
+    "external": 19287344,
+    "arrayBuffers": 16701060
+  },
+  "status": "ready",
+  "errors": []
+}

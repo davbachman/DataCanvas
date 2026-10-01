@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-01T16:56:45.523Z",
+  "browser": "151.0.7922.173",
+  "platform": "linux",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "logicalCPUs": 5,
+  "rows": 100000,
+  "columns": 20,
+  "operations": 20,
+  "lookupRows": 10000,
+  "wallClockMs": 25126,
+  "elapsedMs": 24905.5,
+  "engineMs": 23996.099999999627,
+  "status": "ready",
+  "errors": [],
+  "engine": "v1.5.4",
+  "heartbeats": 497,
+  "mainThreadHeapBefore": 32147777,
+  "mainThreadHeapAfter": 40074243,
+  "rowCounts": {
+    "baseline": 100000,
+    "lookup": 10000,
+    "main": 96551,
+    "summary": 2,
+    "sample": 1000
+  }
+}

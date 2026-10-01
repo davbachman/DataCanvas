@@ -1,0 +1,417 @@
+DATA CANVAS — CODING AGENT BUILD SPECIFICATION
+Revised October 1, 2026 — public application scope; classroom tooling excluded
+
+PURPOSE AND AUTHORITY
+
+Build a browser-based visual programming environment for cleaning, tidying, combining, exploring, and visualizing datasets. Its design should support structural reasoning, reproducible analysis, and defensible interpretation without requiring users to memorize programming syntax. It should be approachable for introductory data science users and useful independently of any course.
+
+This is a complete target specification with a staged implementation plan. The settled primary interaction is Scratch-like snapping blocks organized into named table recipes. A read-only dependency overview supplements those recipes. Do not replace the primary editor with a free-form node-and-wire canvas. Do not spend the implementation comparing competing interface paradigms; implement this direction and refine usability through testing.
+
+The chosen product name is Data Canvas, with a space. Use it consistently in the interface and documentation. Technical identifiers may use data-canvas or datacanvas; the project file extension remains .datacanvas.
+
+Users must be able to answer, at any point: What does one row represent? Which observations contribute to this result? What did this operation change? Why is that change appropriate? How does this graphic encode the data?
+
+1. PRECEDENTS AND PRODUCT BOUNDARIES
+
+Inspect these public repositories for interaction ideas and reusable components:
+- https://github.com/davbachman/FlowLab
+- https://github.com/davbachman/NeuralCanvas
+
+Borrow FlowLab's stepping, validation, undo, and recovery ideas. Borrow NeuralCanvas's inspectable intermediate values, linked representations, and compositional organization. Preserve applicable attribution and licenses when reusing code. Implement Data Canvas as a separate application; do not modify either existing app as part of this task.
+
+The new app is a table-transformation language. It is not an imperative programming course in disguise: no loops, mutable global variables, classes, or general-purpose scripting in the introductory palette. Operations act on entire tables. Blocks inside operations represent expressions, grouping choices, join keys, and graphical encodings.
+
+The first complete release excludes model training, real-time collaboration, user accounts, cloud database credentials, built-in LLM access, arbitrary JavaScript/Python execution, and automatic conversion of arbitrary SQL into blocks. Keep architecture extensible without implementing these features speculatively. Classroom-specific features are excluded entirely: assignments, grading, rubrics, answer collection, instructor controls, and course administration will live in a separate private repository. The only integration requirement is the generic export and execution contract in section 13.
+
+2. THE PRIMARY PROGRAMMING MODEL
+
+A project contains immutable sources, named recipes, charts, and written report items. Each recipe starts with FROM [source or recipe output], followed by a vertical stack of transformation blocks. Every completed recipe produces a named table.
+
+Example:
+
+  RECIPE Monthly regional temperatures
+  FROM [Wide monthly measurements]
+  PIVOT LONGER [Jan, Feb, Mar]
+      names into [month]; values into [temperature_c]
+  PARSE [temperature_c] AS [decimal number]
+  LEFT JOIN [Clean station metadata]
+      ON [station_id] = [station_id]
+      expected relationship [many-to-one]
+  SUMMARIZE BY [region, month]
+      [mean_temperature] = MEAN([temperature_c])
+
+Recipes reference other recipes by stable identifier, not by editable name. A reference means the current computed output, not a copied table. Changes propagate to dependent recipes and charts. Detect cycles before execution and identify the references that cause them.
+
+Branching: create a new recipe FROM an existing recipe. Joining: select the second recipe in a typed table-reference slot. Appending: choose two or more table references. Shared processing remains defined once.
+
+To reuse an intermediate step, offer “Extract prefix as recipe.” Move the selected prefix into a new named recipe and replace it with a reference in the original. Preserve output equivalence and downstream identifiers. Do not create fragile hidden references to arbitrary stack positions.
+
+Charts are separate named objects that reference a recipe output. “Visualize this table” creates one. Charts can be represented by composition blocks in their own editor; a chart is not a table transformation, and no table-processing block may follow a terminal chart inside a recipe.
+
+A dependency overview shows sources, recipes, and charts with automatic layout. Clicking an item opens its editor; clicking a connection inspects the referenced table. The overview is navigational, not a second independently editable program.
+
+3. WORKSPACE AND VISUAL DESIGN
+
+Build a serious, approachable data-analysis tool with restrained category colors, readable typography, clear block shapes, and generous spacing. Avoid cartoon styling, decorative animation, and a dashboard full of unrelated cards. The data and program should dominate.
+
+Top bar: project title; File and Edit menus; Run, Step, and execution status; report access; save/recovery status.
+
+Left sidebar: project sources, recipes, and charts, plus a searchable operation toolbox. Show contextual categories for table or chart editing. Use collapsed categories and basic/advanced disclosure to keep the toolbox approachable. All functionality is available without classroom-specific restrictions.
+
+Center: selected recipe's vertical snapping-block workspace. Keep the primary flow aligned and easy to scan. Each operation shows its essential settings and a small output summary. Insert controls between blocks permit click-based addition. Dragging is an option, never the only way to construct a program.
+
+Right inspector tabs: Configure, Explain, Checks, SQL. Configuration changes update the same underlying block. Explain provides a deterministic plain-language account of the operation and its effect, not generated AI prose. SQL is initially read-only.
+
+Bottom inspector: resizable Before/After tables, column profiles, Changes, and Contributing records. Allow maximization. Show table dimensions, current computation status, and whether displayed rows are a preview. A narrow sidebar is insufficient for table inspection.
+
+Chart editor: a large live plot and encoding/composition controls. Report editor: ordered text, chart, and table items.
+
+Provide light and dark themes, keyboard navigation, visible focus, accessible labels, non-color indicators, and reduced-motion support. Provide a synchronized accessible recipe-list view with add, move, edit, and delete controls. It must expose the same semantics and use the same command model as the blocks.
+
+Target laptop and desktop browsers first; usable layout at 1280x800 and 1440x900. On smaller widths, switch panes into tabs instead of shrinking text. Phone authoring is not a release requirement.
+
+4. BLOCK EDITOR BEHAVIOR
+
+Use genuinely snapping, typed blocks, not a text editor with colored backgrounds. Whole-table transformations form the main stack. Expression blocks nest inside typed slots. Invalid connections are rejected with understandable feedback; partially completed blocks can remain saved as drafts.
+
+Support search-to-add, insert before/after, drag reorder, keyboard reorder, duplicate, delete, undo/redo, collapse, expand, and per-block notes. Reordering is allowed even when it creates a semantic problem; show the resulting broken reference or missing column clearly rather than silently changing meaning.
+
+Selecting a block selects its input and output in the inspector. Selecting an insertion boundary selects the table at that boundary. Selection and scroll position are view state, not changes to analysis semantics.
+
+Example summary: “Filter temperature > 30: 12,000 input rows; 843 retained; 10,940 false; 217 unknown.” Before evaluation, show expected structural behavior and unknown counts, not invented numbers.
+
+Keep incomplete detached blocks in an explicit scratch area if supported. They never execute or appear as part of a completed recipe. Distinguish scratch blocks from disabled operations; the first release need not support disabling blocks.
+
+No untracked data edits: changing a header creates a Rename operation; changing categories creates Recode; changing individual records creates an explicit keyed correction with an explanation. Table previews are otherwise read-only.
+
+5. TABLE METADATA AND TYPES
+
+Each table carries:
+- Stable table and column identifiers; editable display names.
+- Storage types: text, boolean, integer, decimal/real, date, timestamp.
+- Analytical roles: nominal, ordinal, quantitative, temporal, identifier.
+- Optional units, descriptions, ordered category levels, and source attribution.
+- User-authored unit of observation: “One row represents ...”.
+- Proposed key columns and independently computed key-check results.
+- Schema, row count, quality results, and provenance references.
+
+Storage type and analytical role are separate. A numeric postal code can be an identifier or nominal category. Preserve leading zeros by importing such fields as text. Do not silently coerce identifiers to numbers.
+
+Rename preserves column identity. Derive and summarize create new column identities. Joins namespace identities from each input occurrence, including self-joins. Duplicate display names require explicit aliases. Deleting a column leaves an actionable broken reference downstream. Never silently reconnect by matching a name.
+
+Row meaning is authored, not inferred as truth. Retain it through row-preserving operations. At pivots, summaries, and potentially row-multiplying joins, flag it for review and display the known structural change separately.
+
+6. IMPORT AND SOURCE MANAGEMENT
+
+Required imports: local UTF-8 CSV/TSV and .xlsx sheets, plus bundled example datasets. Expose delimiter, quoting, header row, sheet, missing-value tokens, and relevant number/date parsing choices. Show an import preview and diagnostics before accepting. Explicitly report unsupported encodings or malformed files.
+
+Keep original source bytes and import settings. For delimited files, preserve raw field text alongside typed interpretations. Keep zero, blank strings, declared missing tokens, and parsing failures distinguishable in diagnostics. Do not automatically treat literal “NA” as missing; let the user choose a declared import policy. For spreadsheets, use stored values; do not execute macros or fetch external links. Explain unavailable formula results.
+
+Offer inferred types as a preview that users can override. Imports must not silently discard malformed rows. Report records requiring correction and provide a reproducible policy for retaining or excluding them.
+
+Source replacement is explicit. Compare schemas, preserve established column identities through a reviewed mapping, invalidate affected computations, and report unresolved references. Record a content fingerprint. Unchanged fingerprints may reuse caches.
+
+No account required. Local data stays local unless the user explicitly exports it. Remote URL import, nested JSON, and Parquet are later extensions.
+
+7. REQUIRED TABLE OPERATIONS
+
+Choose and organize:
+- Select/drop columns; rename; multi-column sort with direction and missing placement.
+- Filter using nested AND/OR/NOT, comparisons, membership, text predicates, and missing checks.
+- Sample a specified size or fraction without replacement, with a saved seed.
+
+Clean:
+- Parse numbers, dates, and timestamps with explicit formats/locales where relevant.
+- Trim, change case, replace text, and split/combine columns.
+- Recode exact category mappings with an explicit unmatched-value policy.
+- Keep, drop, or replace missing values in selected columns; no generic “fix all.”
+- Identify duplicates using specified columns. Deduplicate exact rows or keep a record using an explicit deterministic ordering and tie policy.
+- Keyed exceptional corrections: require a unique key, old/new values, and a note. Fail if the match is absent or ambiguous rather than applying broadly.
+
+Derive:
+- Arithmetic; comparisons; conditional values; coalesce; text and date functions.
+- Round, absolute value, selected common mathematical functions, date components, elapsed time, and explicit numeric bins.
+- Expressions are pure and restricted to a known registry. No eval, arbitrary SQL fragments, or general-purpose code in ordinary blocks.
+
+Reshape:
+- Pivot longer: identifier columns, selected value columns, names-to and values-to fields; retain missing values by default, with an explicit drop option.
+- Pivot wider: identifier fields, names field, values field; duplicate cell keys are an error unless a deliberate aggregation is specified. Default absent cells to missing, with explicit fill options.
+- Dynamic output columns are materialized from observed categories; later category changes trigger schema-change diagnostics rather than silently redirecting downstream fields.
+
+Combine:
+- Inner, left, full outer, semi, and anti equality joins, including composite keys.
+- Explicit output-column selection and conflict aliases.
+- Append by column mapping/name, never unnoticed positional matching. Default requires compatible schemas; optional union-of-columns fills absent fields with missing values and reports it.
+
+Summarize:
+- One block includes grouping fields and named aggregate expressions. No persistent invisible grouping state.
+- Row count, nonmissing count, missing count, distinct count, sum, mean, median, minimum, maximum, sample standard deviation, and continuous quantiles.
+- Proportions require an explicit numerator and denominator definition. Group denominators must remain visible.
+- Overall summary has zero grouping columns. Output is ungrouped.
+
+Checks:
+- Unique key; nonmissing key; allowed categories; numeric ranges; row-count expectations; referential integrity; expected join relationship.
+- Checks inspect without altering data. Each has advisory or required severity. Required failures prevent an “all required checks passed” status but do not hide results or prevent saving/exporting work. These are general-purpose data-quality assertions, not grading rules.
+
+Window calculations, fill-down, regex extraction, weighted aggregates, and parameterized reusable procedures are extensions after the core release.
+
+8. PRECISE EXECUTION SEMANTICS
+
+Document these rules in the UI and test them centrally:
+- Tables have no guaranteed analytical order without a Sort operation. Stable preview order is a convenience, not a promise about relational results.
+- Preserve active sort metadata through operations that preserve it; clear it after operations that do not. Downstream order-dependent operations require explicit order and deterministic tie handling.
+- Missing values use null semantics. Comparisons with missing normally produce unknown. Filters retain true only and report false versus unknown separately. Expose “is missing” instead of teaching equality with null.
+- Join keys containing null do not match by default. An advanced explicit null-matching option is optional; never introduce it silently.
+- Grouping puts missing grouping values into a visible missing group.
+- Count rows includes all rows; count values excludes missing; distinct count excludes missing and is labeled accordingly. Numeric aggregates ignore missing and report valid counts. Mean/min/max/median/quantiles of no valid values yield missing. Sum of no valid values also yields missing. Sample standard deviation requires at least two valid values.
+- An ungrouped summary of an empty table returns one row with count zero and missing numeric aggregates. A grouped summary of an empty table returns no groups.
+- Division by zero, invalid domains, overflow, and nonfinite results become missing with issue counts and examples; do not silently put Infinity into a chart.
+- Parsing failures preserve original content and record a distinct diagnostic reason, even when the computational value is null.
+- Text matching is exact and case-sensitive unless the operation explicitly says otherwise. Cleaning is an explicit operation.
+- Dates and timestamps are distinct. Date parsing never silently guesses an ambiguous day/month order. Require a timezone policy for ambiguous timestamp imports; retain it in project metadata.
+- Seeds and sampling algorithm version are saved. Repeated execution on the same source must reproduce samples independently of query-engine row ordering.
+- Every chart uses the complete specified dataset for statistics. Display sampling must never change the computed population unnoticed.
+
+9. INSPECTION, DIAGNOSTICS, AND LINEAGE
+
+Before/After inspector: schema changes, row counts, newly missing values, rows removed or multiplied, and representative affected records. Column profiles include missing/nonmissing counts, distinct counts, ranges, and distributions. Mark approximate results if any; diagnostics at the baseline workload size should be exact.
+
+Join inspector: observed uniqueness on each side, expected relationship, matched/unmatched counts, exact projected output count when feasible, and concrete examples of multiplicity. Show why two rows joined with three rows produce six. Warn before executing an explosive join and allow cancellation. Never truncate a join and present it as complete.
+
+Errors are attached to their originating operation, with downstream items marked “blocked by [operation].” Messages describe the problem and a possible resolution. A failed computation never leaves an old value labeled current.
+
+Lineage requirements:
+- Filters/selects/derivations retain hidden source-row identifiers.
+- Joins retain left/right contributors, including unmatched records.
+- Pivots retain source row and source-column context.
+- Aggregates and chart marks retrieve contributing records on demand.
+- Distinguish value lineage (“which observations contributed?”) from transformation provenance (“which steps were applied?”).
+
+Do not materialize an enormous full provenance graph for every result. Use compact identifiers and on-demand queries. Keep lineage metadata separate from user-visible columns and ordinary CSV exports.
+
+10. RUN, STEP, PREVIEW, AND RECOMPUTATION
+
+Run evaluates the selected recipe and necessary dependencies. Run All evaluates all reachable project outputs. Step advances through the selected recipe one transformation at a time, showing before/after state. Resolve prerequisite recipes first and explain this in the step view. Stepping exposes table transformations, not engine-internal instructions or a row-by-row animation.
+
+Auto-preview may recompute after a short debounce for small tasks. Provide manual mode for deliberate inspection and expensive queries. Run and Step are always available; there are no prediction gates or instructor-controlled checkpoints.
+
+Cache by source fingerprints, semantic operation parameters, dependencies, and engine/semantic version. Renaming display titles or moving blocks visually must not recompute data. Changes to semantic settings invalidate all affected descendants.
+
+Use worker execution. Tag requests with revision/generation IDs and discard obsolete responses. Provide running, ready, stale, blocked, failed, and canceled states. Cancel must actually interrupt work where supported or restart/reconstruct the worker safely. Autosave must survive cancellation.
+
+Limit table rendering to virtualized/paginated previews. Calculate final statistics on the full input before limiting displayed rows. Show “Showing 100 of 18,240 rows,” not a vague “preview” badge alone.
+
+11. CHART LANGUAGE
+
+Chart objects reference recipe outputs by stable ID. Each chart has one or more layers and optional facets. Each layer specifies a mark, encoding mappings, and visible statistical transformations. Keep advanced structure collapsed until needed.
+
+Required chart families: scatterplot, line, bar from explicit values, count bar, histogram, box plot, and rectangular heat map. Support layers (including constant reference rules) and row/column facets. Initial layers share a source table; different sources per layer are an extension.
+
+Encoding slots: x, y, color, size, shape, detail/group, tooltip; facet row and column at the chart level. Each field has an explicit analytical role. Provide scale domain, linear/log choice where applicable, category order, axis titles/units, legends, and basic accessible palettes. Distinguish mapping a field from setting a constant color or size.
+
+Chart templates are editable starting compositions. No opaque “make beautiful chart” command. No silent aggregation: selecting mean, count, binning, stacking, or box-plot statistics creates a visible chart transformation with inspectable output.
+
+Support “Extract chart transformation as recipe” for basic bin/count/aggregate transformations. Preserve chart equivalence. Specify histogram bin boundaries, interval closure, and handling of extremes. Define box-plot quartiles/whiskers in documentation and reveal the computed values.
+
+Bars representing magnitudes default to zero baselines. Log scales flag nonpositive values. Lines specify sorting and grouping and visibly account for missing-value gaps. Report omitted records, including missing encodings. Warn about misleading settings without forcing a single analytical choice.
+
+Clicking a mark reveals contributing records. Brushing highlights related records without modifying recipes. “Create filter from selection” makes a deliberate new recipe/operation. Store range/category predicates where possible; for an explicit record selection, store stable identifiers and label its source dependence. Avoid circular dependencies between charts and their input tables.
+
+Rendering limits are visible. If a scatterplot needs sampling, use a labeled deterministic sample and offer full-data alternatives such as binning. Aggregate charts use full-data aggregates. Exports include relevant sampling and omission notes.
+
+Export SVG and PNG plus a saved editable chart specification. Charts in reports retain their live data references.
+
+12. SQL BRIDGE
+
+SQL is the first textual bridge. Generate readable DuckDB SQL with named intermediate steps and source-to-block mappings. Selecting a block highlights its SQL; selecting mapped SQL highlights the block. Keep user-facing names readable while escaping identifiers safely.
+
+The generated SQL must be derived from the canonical analysis representation, not scraped from UI text. Annotate dialect-specific behavior. Export SQL with source/import instructions and required data files; do not imply that a query relying on temporary browser tables runs independently.
+
+Provide a separate read-only query workspace over registered project tables. Users can read generated queries, author analytical SELECT queries, and compare query outputs with recipe outputs. Allow SELECT/WITH analytical queries through a parser/allowlist and an isolated execution context. Reject mutation, extension loading, external file/network access, and arbitrary engine commands. A regex-only safeguard is insufficient.
+
+Compare schemas and row multisets, preserving duplicate multiplicities. Compare order only when required. Use explicit floating-point tolerances. Explain mismatches with examples.
+
+Do not support free-form SQL-to-block round-tripping. User-authored SQL is saved as a separate query object with its table bindings, not another editable representation of the same block program. It is a terminal analytical view and cannot become an input to a block recipe in the initial release. R/tidyverse and pandas exports are later adapters with semantic parity tests.
+
+13. EXTERNAL AUTOMATION CONTRACT AND GRADESCOPE COMPATIBILITY
+
+The public application must export analyses that a separate private repository can evaluate automatically in Gradescope. Build only the reusable application interfaces needed for that integration. Assignment authoring, grading policies, scores, test visibility, hidden datasets, feedback templates, submission management, LMS integration, and the Gradescope adapter itself belong outside this repository.
+
+No Assignment mode, instructor role, locked scaffolding, prediction gates, assignment metadata, classroom UI, or assignment packages are part of Data Canvas. A user saves an ordinary project file. A private external tool may treat that file as a submission without the app knowing anything about the course or assignment.
+
+Required public interfaces:
+- Validate and load a project bundle without rendering the editor.
+- Enumerate sources, recipes, queries, charts, and their stable IDs, names, and dependencies.
+- Execute specified recipes or charts headlessly under Linux using the same operation definitions, SQL compiler, and semantic rules as the browser.
+- Accept explicit caller-provided source replacements keyed by source ID and column mappings. Do not modify the original bundle. Default to the project's saved import settings; any caller override must be explicit and recorded in the execution result. Normal source fingerprint checks still apply when no override is requested.
+- Recompute from source; never trust submitted caches, reported row counts, or saved validation flags.
+- Return machine-readable schemas, typed values or result-file references, row counts, diagnostics, operation IDs, and resolved chart specifications including computed statistical tables. Expose authored analytical intent as well as rendering configuration so a private tool can inspect encodings without screenshot comparison.
+- Support finite time/memory/output limits, deterministic seeds, and structured validation/execution errors. Limits and source paths are controlled by the caller, not by untrusted project metadata.
+
+Provide a versioned JavaScript/TypeScript API and a thin general-purpose CLI with validate, inspect, and run commands. Document exact arguments, output schemas, supported engine versions, exit codes, and example invocations. This is an analysis runner, not a grader: output computational results and errors, never scores, rubric judgments, or Gradescope results.json.
+
+CLI contract: operate on a local project path, accept selected output IDs and an optional explicit source-override manifest, write results into a caller-selected output directory, and emit a structured result manifest. Distinguish validation errors, source/schema errors, execution errors, cancellations, and resource limits with stable codes. Separate human progress messages on stderr from machine-readable stdout. Output manifests must distinguish valid empty results from failed computations.
+
+Result serialization must preserve null versus text, booleans, integer precision beyond JavaScript's safe range, decimal values, and date/timestamp meaning. Define a typed interchange representation (such as schema plus tagged JSON values or Arrow with a documented manifest); do not silently coerce large integers to floating-point numbers. Include engine and semantic versions and whether order is guaranteed. Do not sort, round, drop duplicates, or normalize nulls merely to make comparisons convenient. Tolerances and equivalence judgments belong to the external consumer.
+
+Expose stable output IDs and editable names. A private grader can select outputs using its own configuration or an ordinary starter project with predefined IDs. Do not rely on canvas positions, implicit “last chart” selection, or assignment fields in the public format.
+
+Keep the execution core independent of React, DOM, canvas rendering, IndexedDB, and interactive browser file pickers. Use shared engine/compiler code where feasible. If headless execution uses native DuckDB rather than Wasm, pin compatible versions and run browser/headless parity fixtures for nulls, duplicates, dates, pivots, joins, aggregates, chart statistics, and sampling. Do not claim compatibility based only on generated SQL similarity.
+
+The runner accepts declarative, validated project data only. It must not execute scripts or plugins embedded in a project or allow arbitrary network/file access from submitted SQL. Restrict file access to explicitly supplied assets and caller-controlled output paths. General-purpose query objects use the same read-only SQL restrictions as the browser. The public runner is not a substitute for process/container isolation by an external service.
+
+Gradescope boundary: its external harness supplies submission files and expects a grading-results JSON file. The future private adapter will call Data Canvas's runner, compare outputs against private expectations, and produce Gradescope's required results. That adapter, its container/setup scripts, and all grading content are explicitly not deliverables here. No Gradescope login, API call, upload button, or dependency is required in the app. See the official autograder specification in the references.
+
+Verify the public contract with ordinary software integration tests: execute the same exported project in the browser and in Linux; compare computed semantics; exercise a replacement source; inspect chart encodings and statistical tables; reject unsupported versions and malformed projects. Include a neutral batch-analysis example, not a sample course grader.
+
+14. REPORTS AND HANDOFF TO MACHINE LEARNING
+
+A report is an ordered collection of text, linked charts, linked summary tables, captions, and limitations. Claims can reference evidence objects and operation notes. Changing supporting data refreshes figures and marks linked prose “review needed”; do not automatically rewrite user conclusions.
+
+Export a self-contained HTML report with embedded figures and print styles. Browser print-to-PDF is adequate initially; no dedicated PDF rendering service is required. Include source attribution, data/version metadata, and reproducible operation summaries. The editable project remains the reproducible source of an analysis; the report is a presentation export.
+
+Export clean CSV plus a data dictionary for use in NeuralCanvas or other tools. Explain incompatible feature types rather than silently encoding categories. Do not implement model fitting in this app. Any later learned preprocessing must fit only on training partitions and preserve split metadata.
+
+15. CANONICAL PROJECT MODEL
+
+Use a versioned, validated, UI-independent model. Suggested structure:
+
+  Project
+    formatName, schemaVersion, semanticVersion, projectId, title
+    sources[]: id, assetRef, fingerprint, importSpec, metadata
+    recipes[]: id, name, inputRef, operations[], outputMetadata
+    charts[]: id, inputRecipeId, layers[], facets, scales, annotations
+    reportItems[]: text | chartRef | tableRef
+    queries[]: id, name, sqlText, tableBindings
+    viewState, engineVersions, randomSeeds
+
+  Operation
+    id, kind, version, typedParameters, note?, authoredMetadata?
+
+  Expression
+    literal | columnRef | unary | binary | functionCall | conditional
+    with typed children and explicit row/aggregate scope
+
+Source and recipe references are discriminated types. Column references carry stable IDs, not arbitrary SQL names. Validation checks both storage types and expression scope. Aggregate expressions cannot accidentally appear in row-only slots.
+
+Separate the canonical model from Blockly serialization, editor coordinates, SQL strings, query caches, and rendered HTML. An editor adapter maps user gestures to canonical commands. A projection rebuilds editor state from that model. Avoid two independently authoritative models.
+
+Create an operation registry with metadata, input/parameter schema, output-schema inference, semantic validation, compiler implementation, explanatory text, and diagnostics hooks. The same registry informs palettes, browser execution, and the general-purpose headless runner.
+
+For joins and dynamic pivots, model schema resolution explicitly. Runtime-discovered schema updates must preserve existing field identities where meaning is unchanged and report additions/removals. Do not fabricate static type certainty when the output depends on data.
+
+16. PERSISTENCE AND FILE FORMAT
+
+Use IndexedDB for autosave and recovery, including source assets. Show saving/saved/error states and handle storage quotas. Autosave is separate from an explicit downloadable backup.
+
+Project export: a .datacanvas ZIP bundle containing a JSON manifest, source assets, optional thumbnails, and documented version metadata. Derived caches are optional and never authoritative. Import/export must preserve unfinished blocks, notes, recipes, charts, reports, and saved queries. The schema contains no assignment, score, rubric, answer, checkpoint, or instructor-role fields.
+
+Validate imported bundles before replacing an open project. Reject unsafe archive paths, unreasonable decompressed sizes, malformed references, unsupported operation versions, and invalid payloads. Treat notes and data as text, not executable HTML. Provide clear forward-version errors and explicit migrations for supported old formats.
+
+Default to self-contained bundles for portable work. If source assets are deliberately omitted, label the export as incomplete and require relinking with fingerprint verification. Merely storing browser-local IDs is not a shareable project.
+
+New, Open, and Import must protect recoverable unsaved work. Undo/redo covers semantic edits and their affected metadata; it need not store large computed tables.
+
+17. TECHNICAL ARCHITECTURE
+
+Preferred stack: React, TypeScript, Vite; Blockly for the snapping-block editor; DuckDB-Wasm in a dedicated worker for table execution; Vega-Lite for plotting; IndexedDB for local storage. A lightweight graph library may render the read-only dependency overview, but do not let it dictate the primary interaction.
+
+Blockly is an editor component, not the application data model or data engine. Use custom table-operation and expression blocks. Evaluate keyboard behavior early and provide the accessible recipe-list alternative even if the blocks themselves have keyboard support. If a library limitation forces a different block editor, document the concrete limitation and preserve the specified behavior; do not substitute a generic node canvas.
+
+Verify current library APIs and choose stable compatible versions when implementing. Pin dependencies and commit a lockfile. Do not assume versions from the reference apps are required.
+
+Suggested modules: domain/model, domain/operations, domain/expressions, compiler/sql, engine/worker, engine/lineage, editor/blocks, editor/recipe-list, inspector, charts, queries, headless, reports, persistence, fixtures.
+
+Use relational compilation, schema inference, and selective caching. Prefer views/queries and bounded materialization to retaining every intermediate full table. Batch diagnostics where possible. Never run heavy processing on the UI thread or render a full large dataset into DOM nodes.
+
+Use safe SQL identifier generation/quoting and parameterized literals where supported. Imported column names must never become executable SQL. Chart specs are generated by the app; do not trust imported arbitrary remote URLs or executable expressions without validation.
+
+Static hosting is a requirement. Support a repository subpath, bundled worker/Wasm assets, and a single-thread fallback where cross-origin isolation is unavailable. Test production builds on a GitHub Pages-like setup. No backend, API key, or external database is needed for normal application use. Publishing to a real account is a separate action from preparing a deployable build.
+
+Bundle core runtime dependencies instead of requiring data-bearing requests to external services. No analytics by default. Offline reopening of saved projects is desirable after assets are cached, but full service-worker offline support is not required for the first release.
+
+18. PERFORMANCE AND RELIABILITY TARGETS
+
+Baseline workload: 100,000 rows, 20 columns, around 20 transformations, several branches, and a join against 10,000 lookup records on a typical recent laptop. These are test targets, not claims already achieved. Include text/category columns and missingness in benchmarks.
+
+Report measured cold-start time, common-operation latency, memory behavior, and responsiveness on declared hardware/browser versions. Aim for routine edits to acknowledge immediately and common baseline queries to complete within roughly two seconds after warm-up. Long work must remain cancellable and visibly in progress.
+
+Prevent silent sampling or truncation to meet a speed target. Large-file failures should state the problem, preserve work, and suggest a smaller source. Cap projected join size and memory-heavy chart rendering with configurable practical limits. Benchmark Chrome and Safari; test Firefox compatibility when feasible. Record concrete limitations.
+
+19. EXAMPLE PROJECTS AND TEST FIXTURES
+
+Include at least three small, self-contained example projects with synthetic or clearly licensed data and attribution:
+
+A. Messy temperatures: wide monthly values, whitespace/category inconsistencies, explicit missing tokens, malformed numeric values, duplicate metadata keys. Demonstrates parsing, pivoting, join diagnostics, missingness, aggregation, and facets.
+
+B. Transactions and products: leading-zero product IDs, unmatched keys, duplicate lookup rows, and multiple line items. Demonstrates row meaning, many-to-one joins, accidental multiplication, counts versus sums, and anti joins.
+
+C. Unequal group sizes: two plausible weighting choices produce different summaries. Demonstrates station-level versus observation-level averaging, denominators, branching, and evidence-based reporting.
+
+Each example is an ordinary, fully editable public project with concise explanatory notes. Include no assignment prompts, teacher versions, hidden solutions, rubrics, or classroom packages. Fixture data must deliberately exercise edge cases; do not rely solely on immaculate demonstration data.
+
+20. ACCEPTANCE CRITERIA
+
+The complete application must pass these behavior-level scenarios:
+
+1. A first-time user imports a CSV, builds a recipe with blocks, filters and derives columns, summarizes, makes a chart, and saves/reopens the complete project without coding or an account.
+2. The same task is possible using keyboard/list controls without dragging.
+3. Every step exposes input/output data and accurate counts. Reordering a step changes results or yields a clear semantic error.
+4. Renaming a column preserves downstream expressions; deleting it creates a named broken reference. No accidental name-based rebinding occurs.
+5. Two recipes reuse a shared cleaned recipe; editing it updates both. A dependency cycle is rejected clearly.
+6. A 2-by-3 join match is diagnosed and produces six rows. Missing/unmatched keys and composite keys behave as specified.
+7. Pivot longer preserves intended identifiers and missing values. Pivot wider rejects duplicate cell keys unless aggregation is explicit.
+8. Null comparisons, empty tables, all-missing groups, count variants, invalid arithmetic, and deterministic sampling match the documented semantics.
+9. A chart's counts/aggregates use all input rows even when the table inspector displays only 100. Mark inspection retrieves correct contributing rows.
+10. Changing histogram bins changes both the graphic and its inspectable bin table. Bar aggregation is never hidden.
+11. Stale worker responses cannot overwrite newer edits. Failed/canceled runs cannot masquerade as current results.
+12. Undo restores semantic edits; reload restores an unfinished project; ZIP export/import works in a fresh browser with no original local files.
+13. Generated SQL reproduces recipe output. SQL comparison preserves duplicate multiplicity and only treats order as meaningful when specified.
+14. The headless runner evaluates an exported project in Linux without a browser, recomputes from source, accepts explicit source replacements, and exposes typed table results, diagnostics, and resolved chart specifications with browser-equivalent semantics. No assignment or grading components are bundled.
+15. Report figures refresh after changes, while linked written claims are flagged for review. Exported HTML is readable and self-contained.
+16. The production static build works from a subpath with its workers and Wasm assets and no development server assumptions.
+
+Use unit tests for semantics/compiler behavior, integration tests for worker execution and persistence, and browser tests for the major user journeys. Add small adversarial fixtures for nulls, duplicates, quote-containing column names, malformed input, and schema drift. Use a small independent reference calculation for selected operations to avoid only testing the compiler against itself. Perform visual QA on the block workspace, table inspector, chart editor, and report at laptop widths. Record test results and known limitations honestly.
+
+21. BUILD SEQUENCE AND COMPLETION CONTRACT
+
+Stage 1 — vertical slice:
+Canonical project/operation model; source import for CSV; real snapping recipes; filter, derive, summarize; before/after inspection; one chart family; undo; autosave; portable save/load; real worker execution. Ship an end-to-end working path before expanding the toolbox.
+
+Stage 2 — data reasoning:
+Full cleaning core; metadata and key checks; pivots; joins/append with diagnostics; named-recipe reuse; dependency overview; lineage; full required chart grammar; generated SQL.
+
+Stage 3 — complete application:
+Spreadsheet import; isolated SQL workspace; general-purpose headless execution interface; reports; accessibility; complete examples; static production deployment support; performance and cross-browser verification.
+
+All three stages are required for the requested application. Stages are implementation order, not permission checkpoints or excuses to stop after a mockup. If a genuine dependency blocks progress, preserve completed work and report the exact limitation. Do not invent completion claims or substitute placeholder outputs.
+
+Later extensions, outside initial completion: window operations, advanced text/geospatial tools, additional import formats, parameterized reusable procedures, pandas/R export, integrated NeuralCanvas transfer, collaboration, and optional AI critique tools.
+
+Final coding-agent deliverables:
+- Working source repository and reproducible development/production commands.
+- Runnable production build prepared for static deployment.
+- Versioned project schema and execution-result format documentation.
+- General-purpose headless runner/API with documented Linux invocation and integration contract.
+- Editable public examples and edge-case software test fixtures.
+- User quick-start and developer integration guide.
+- Automated test results, visual QA summary, benchmark measurements, and known limitations.
+- Minimal architecture notes identifying the canonical model, compiler, worker, editor adapter, and extension points.
+
+Resolve routine implementation choices autonomously in service of this specification. Prioritize correct semantics, inspectability, and preservation of user work over ornamental features. Do not claim that visual programming alone guarantees learning or prevents AI-assisted outsourcing.
+
+REFERENCE LINKS
+
+These references support implementation choices and design precedents; their full feature sets are not requirements:
+- FlowLab: https://github.com/davbachman/FlowLab
+- NeuralCanvas: https://github.com/davbachman/NeuralCanvas
+- Blockly: https://docs.blockly.com/guides/get-started/what-is-blockly/
+- DuckDB-Wasm: https://duckdb.org/docs/current/clients/wasm/overview
+- Vega-Lite: https://vega.github.io/vega-lite/
+- Tidy Data: https://www.jstatsoft.org/article/view/v059i10
+- CODAP graph interaction: https://codap.concord.org/how-to/getting-started-with-graphs/
+- Wrangler: https://idl.uw.edu/papers/wrangler
+- Orange widget catalog: https://orangedatamining.com/widget-catalog/
+- Gradescope autograder interface (for the external integration boundary only): https://gradescope-autograders.readthedocs.io/en/latest/specs/
+
+END OF SPECIFICATION
