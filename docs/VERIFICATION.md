@@ -5,7 +5,7 @@ Verified on October 1, 2026 in Linux x64 with Node 24.19.0 and Chromium 151.0.79
 ## Automated coverage
 
 - **33 unit/integration tests**: missing and empty-table semantics; count variants; arithmetic; deterministic sampling; join multiplicity and key behavior; pivot drift; parse/correction failures; immutable assets and archive safety; explicit source replacement; stable references; dependency/cache invalidation; isolated SQL; chart populations; timestamp microseconds and large integers; RE2 flags, captures, replacement, invalid patterns, missing values, and portable settings.
-- **10 Chromium browser tests**: production `/DataCanvas/` asset/worker loading; import → recipe → chart → portable backup → fresh-context reopen; keyboard/list operation controls and undo/redo; IndexedDB recovery; Step/Run and real worker cancellation; isolated SQL; mark lineage and explicit selection recipes; seven chart families, layers/facets, light/dark laptop layouts; report HTML export; regex preview/filter/extraction; and four browser/native parity fixtures.
+- **10 browser scenarios** (30 CI executions across Chromium, Firefox, and WebKit): production `/DataCanvas/` asset/worker loading; import → recipe → chart → portable backup → fresh-context reopen; keyboard/list operation controls and undo/redo; IndexedDB recovery; Step/Run and real worker cancellation; isolated SQL; mark lineage and explicit selection recipes; seven chart families, layers/facets, light/dark laptop layouts; report HTML export; regex preview/filter/extraction; and four browser/native parity fixtures.
 - Parity compares typed schemas and values, duplicate multiplicity, row counts, authored chart specifications, and computed statistical tables. Decimal aggregates use an explicit absolute tolerance of `1e-12` to accommodate floating-point summation order. Text, integers, dates, and timestamps remain exact. Adversarial fixtures include a capture/replace/filter regex chain.
 - `npm run build` type-checks and creates the deployable static build. CI repeats semantic tests, the production build, and browser tests before deploying.
 
@@ -25,7 +25,7 @@ Native measurements: cold database startup **12 ms**, first full pipeline **4.10
 
 ## Known limitations
 
-- Firefox and WebKit/Safari have not been exercised here. This environment blocks the Playwright browser-download host, so only installed Chromium was available. The code avoids cross-origin-isolation requirements, but cross-browser acceptance remains unverified.
+- Local browser checks use installed Chromium because this environment blocks browser downloads. The GitHub Pages workflow installs and tests Chromium, Firefox, and WebKit; its status is the release gate. WebKit on Linux is not a test of Safari on an actual Mac/iPhone, and mobile-device behavior remains unverified.
 - The complete cold 100,000-row pipeline exceeds a two-second interaction target. Cached runs are substantially faster; workers keep queries off the UI thread. Wasm startup and source parsing remain material costs.
 - The bundled DuckDB Wasm is approximately **41.3 MB uncompressed / 9.36 MB gzip**. First-load speed depends on network caching/compression. There is no service-worker offline-install guarantee.
 - Table inspectors default to 100 preview rows; full statistics are computed before previewing. Raw chart display is capped at 20,000 rows and statistical chart tables at 10,000 rows; oversized displays error rather than silently sample. Headless/source limits default to one million rows. ZIP limits are 64 MiB compressed and 256 MiB expanded.
@@ -35,4 +35,4 @@ Native measurements: cold database startup **12 ms**, first full pipeline **4.10
 - RE2 does not implement lookaround or pattern backreferences. Replacement capture references use `\1`–`\9`. Regex operations currently target one column each; chain operations for multiple columns/captures.
 - CLI memory settings constrain the DuckDB budget and JavaScript heap independently; callers needing a hard total-memory ceiling must provide OS/container isolation. See the [integration contract](INTEGRATION.md).
 
-These limitations are recorded rather than represented as completed cross-browser, accessibility, or performance targets.
+See the [Pages workflow](https://github.com/davbachman/DataCanvas/actions/workflows/pages.yml) for the exact commit’s cross-browser results, deployment status, and published-asset verification. Accessibility and performance qualifications above remain applicable.
