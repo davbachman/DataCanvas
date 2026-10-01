@@ -1527,6 +1527,15 @@ export default function App() {
                           </div>
                           <Configure
                             operation={op}
+                            previewColumnRegex={(params, columns) =>
+                              client.current!.request("columnRegexPreview", {
+                                params,
+                                columns: columns.map(({ id, name }) => ({
+                                  id,
+                                  name,
+                                })),
+                              })
+                            }
                             previewRegex={(params, sample) =>
                               client.current!.request("regexPreview", {
                                 params,

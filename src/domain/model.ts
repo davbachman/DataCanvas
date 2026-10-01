@@ -30,7 +30,7 @@ export type Ref = { kind: "source" | "recipe"; id: string };
 export interface Operation {
   id: string;
   kind: string;
-  version: 1;
+  version: 1 | 2;
   params: Record<string, any>;
   note?: string;
   draft?: boolean;
@@ -223,7 +223,7 @@ export const projectSchema = z.object({
             z.object({
               id,
               kind: z.string(),
-              version: z.literal(1),
+              version: z.union([z.literal(1), z.literal(2)]),
               params: z.record(z.string(), z.unknown()),
               note: z.string().optional(),
               draft: z.boolean().optional(),

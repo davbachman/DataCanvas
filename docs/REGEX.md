@@ -22,3 +22,13 @@ Patterns search anywhere in the value. Enter `^…$` to anchor the whole value. 
 Use **Pattern preview text → Test pattern** to test an entire sample value, including embedded newlines. This runs the same engine and compiler as the actual transformation, in a worker. The preview does not edit the recipe's data. **Run** computes the full table; **Checks** reports matching, nonmatching, and missing counts with five before/after examples.
 
 RE2 supports alternation, character classes, quantifiers, capturing groups, and Unicode classes. It does not support lookahead/lookbehind or backreferences inside patterns. Invalid patterns produce an attached operation error, including on an empty input table. The pattern limit is 4,096 characters; the tester accepts 10,000 characters of sample text. All settings and stable output column IDs are included in portable projects, undo/redo, recovery, and headless execution. Chain regex blocks to process multiple columns or extract multiple groups.
+
+## Select columns by name
+
+Add **Choose → Select columns**, set **Select by → Regular expression**, and enter a **Column name pattern (RE2)**. Choose **keep** to retain matching columns or **drop** to remove them. **Ignore case** is optional and off by default. **Preview matching columns** lists the matched names and the number of columns that will remain, using the same RE2 engine as execution.
+
+Examples: `^sales_` matches names starting with `sales_`; `_2025$` matches names ending in `_2025`; `^(id|date|amount)$` matches those three exact names. Patterns search display names, not cell values or stable IDs. Enter `.*` (or an empty pattern) to match every name. Escape punctuation when literal matching is intended, such as `sales\.2025`.
+
+Names are evaluated against this step's input schema each time the recipe runs, so upstream renames or added columns can change the selection. Retained columns preserve their IDs, metadata, and input order. Rows and lineage are unchanged. If nothing matches, **keep** produces a table with zero visible columns and the original row count; **drop** retains all columns. Checks report the match count, retained count, and matched names. Invalid patterns fail even on empty inputs.
+
+The preview uses currently known input names; run pending upstream edits to refresh them. Explicit selection remains available and existing projects keep their original behavior. A regex selection is saved as **Select columns operation version 2**, so older releases that do not support it reject the project instead of silently executing a different selection. Pattern, action, case option, and version survive portable export/import and browser/headless execution.

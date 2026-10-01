@@ -1,4 +1,4 @@
-import { regexSQL, validateRegex } from "./regex";
+import { regexSQL, validateRegex, matchColumnNames } from "./regex";
 import {
   type Column,
   type Operation,
@@ -104,11 +104,22 @@ export async function compileOperation(
       break;
     }
     case "select": {
-      p.columns.forEach(c);
+      let selected: string[];
+      if (p.selection === "regex") {
+        const matches = await matchColumnNames(db, cols, p);
+        selected = matches.map((x) => x.id);
+        diagnostics.push({
+          severity: selected.length ? "info" : "advisory",
+          count: selected.length,
+          message: `${selected.length} of ${cols.length} column names matched. ${p.mode === "keep" ? selected.length : cols.length - selected.length} columns retained; input order and row count are unchanged.`,
+          examples: matches,
+        });
+      } else {
+        p.columns.forEach(c);
+        selected = p.columns;
+      }
       columns = cols.filter((x) =>
-        p.mode === "keep"
-          ? p.columns.includes(x.id)
-          : !p.columns.includes(x.id),
+        p.mode === "keep" ? selected.includes(x.id) : !selected.includes(x.id),
       );
       sql = `SELECT ${[...columns.map((x) => q(x.id)), hidden].join(", ")} FROM ${from}`;
       break;

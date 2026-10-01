@@ -252,6 +252,10 @@ export function operationDetail(o: Operation, columns: Column[]) {
   const name = (id: string) => columns.find((c) => c.id === id)?.name || id;
   const p = o.params;
   switch (o.kind) {
+    case "select":
+      return p.selection === "regex"
+        ? `${p.mode} names /${p.pattern}/${p.ignoreCase ? "i" : ""}`
+        : `${p.mode} ${p.columns.map(name).join(", ")}`;
     case "regex":
       return `${p.action} ${name(p.columnId)} /${p.pattern}/${p.ignoreCase ? "i" : ""}`;
     case "text":

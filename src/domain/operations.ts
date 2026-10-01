@@ -119,8 +119,20 @@ export const registry = {
     label: "Select columns",
     category: "Choose",
     color: "#387f9a",
-    description: "Keep the selected columns, preserving their identities.",
-    schema: z.object({ columns: cols, mode: z.enum(["keep", "drop"]) }),
+    description:
+      "Keep or drop columns by explicit selection or an RE2 pattern on their display names, preserving column identities and input order.",
+    schema: z
+      .object({
+        columns: cols,
+        mode: z.enum(["keep", "drop"]),
+        selection: z.enum(["explicit", "regex"]).optional(),
+        pattern: str.max(4096).optional(),
+        ignoreCase: z.boolean().optional(),
+      })
+      .refine((p) => p.selection !== "regex" || typeof p.pattern === "string", {
+        message: "A column-name pattern is required",
+        path: ["pattern"],
+      }),
   },
   rename: {
     label: "Rename column",
@@ -398,6 +410,18 @@ export const registry = {
 } as const;
 export type OpKind = keyof typeof registry;
 export function validateOperation(o: Operation) {
+  if (o.version !== 1 && !(o.kind === "select" && o.version === 2))
+    throw new CanvasError(
+      "VALIDATION",
+      `Unsupported ${o.kind} operation version ${o.version}`,
+      o.id,
+    );
+  if (o.kind === "select" && o.params.selection === "regex" && o.version !== 2)
+    throw new CanvasError(
+      "VALIDATION",
+      "Column-name patterns require Select columns version 2",
+      o.id,
+    );
   const def = registry[o.kind as OpKind];
   if (!def)
     throw new CanvasError(
@@ -425,7 +449,13 @@ export function newOperation(
   const id = uid("op");
   const defaults: Record<OpKind, any> = {
     filter: { expression: binary(">", col(num), lit(0)) },
-    select: { columns: columns.map((c) => c.id), mode: "keep" },
+    select: {
+      columns: columns.map((c) => c.id),
+      mode: "keep",
+      selection: "explicit",
+      pattern: ".*",
+      ignoreCase: false,
+    },
     rename: { columnId: c, name: "Renamed column" },
     sort: { keys: [{ columnId: c, direction: "asc", nulls: "last" }] },
     sample: { size: 10, fraction: false, seed: "42", algorithm: "md5-rank-v1" },

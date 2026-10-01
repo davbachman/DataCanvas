@@ -1,4 +1,4 @@
-import { CanvasError } from "../domain/model";
+import { CanvasError, type Column } from "../domain/model";
 import { registry } from "../domain/operations";
 import { literal } from "./expressions";
 import type { DB } from "./sql";
@@ -46,4 +46,37 @@ export async function previewRegex(
   return (
     await db.query(`SELECT ${r.match} AS matched, ${r.value} AS result`)
   )[0];
+}
+
+/** Names are values, never SQL identifiers. Selection is evaluated against the input schema. */
+export async function matchColumnNames(
+  db: DB,
+  columns: Pick<Column, "id" | "name">[],
+  params: Record<string, any>,
+) {
+  const p = registry.select.schema.parse(params);
+  if (p.selection !== "regex")
+    throw new CanvasError(
+      "VALIDATION",
+      "Choose regular-expression column selection first",
+    );
+  const pattern = literal(p.pattern!),
+    flags = literal(p.ignoreCase ? "i" : "c");
+  try {
+    // Validate even when there are no input columns or rows.
+    await db.query(`SELECT regexp_matches('',${pattern},${flags})`);
+    if (!columns.length) return [];
+    const matches = await db.query(
+      `SELECT idx FROM (VALUES ${columns.map((c, i) => `(${i},${literal(c.name)})`).join(",")}) AS headers(idx,name) WHERE regexp_matches(name,${pattern},${flags}) ORDER BY idx`,
+    );
+    return matches.map((row) => ({
+      id: columns[Number(row.idx)].id,
+      name: columns[Number(row.idx)].name,
+    }));
+  } catch (error) {
+    throw new CanvasError(
+      "VALIDATION",
+      `Invalid column-name RE2 pattern: ${(error as Error).message}`,
+    );
+  }
 }

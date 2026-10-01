@@ -1,3 +1,4 @@
+import { ColumnRegexPreview } from "./ColumnRegexPreview";
 import { RegexPreview } from "./RegexPreview";
 import type { Column, Operation, Project, Ref } from "../domain/model";
 import { aggregates, registry, type OpKind } from "../domain/operations";
@@ -170,7 +171,12 @@ export function Configure({
   onChange,
   referenceColumns,
   previewRegex,
+  previewColumnRegex,
 }: {
+  previewColumnRegex: (
+    params: any,
+    columns: Column[],
+  ) => Promise<{ id: string; name: string }[]>;
   previewRegex: (params: any, sample: string) => Promise<any>;
   operation: Operation;
   columns: Column[];
@@ -305,7 +311,60 @@ export function Configure({
       {o.kind === "select" && (
         <>
           {select("mode", "Action", ["keep", "drop"])}
-          {multi("columns", "Columns")}
+          <Select
+            label="Select by"
+            value={p.selection || "explicit"}
+            options={[
+              { value: "explicit", label: "Explicit columns" },
+              { value: "regex", label: "Regular expression" },
+            ]}
+            onChange={(selection) =>
+              onChange({
+                ...o,
+                version: selection === "regex" ? 2 : 1,
+                params: {
+                  ...p,
+                  selection,
+                  pattern: p.pattern ?? ".*",
+                  ignoreCase: p.ignoreCase ?? false,
+                },
+              })
+            }
+          />
+          {p.selection === "regex" ? (
+            <>
+              <Field label="Column name pattern (RE2)">
+                <textarea
+                  spellCheck={false}
+                  className="regex-pattern"
+                  value={p.pattern ?? ""}
+                  onChange={(e) => set("pattern", e.target.value)}
+                />
+              </Field>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={!!p.ignoreCase}
+                  onChange={(e) => set("ignoreCase", e.target.checked)}
+                />
+                Ignore case
+              </label>
+              <small>
+                Matches anywhere in display names; use ^sales_ or _2025$ to
+                anchor. Re-evaluated on each run after upstream renames or
+                schema changes. No matches: keep retains zero columns; drop
+                retains all. Row count and column order stay unchanged.
+              </small>
+              <ColumnRegexPreview
+                key={o.id}
+                params={p}
+                columns={columns}
+                preview={previewColumnRegex}
+              />
+            </>
+          ) : (
+            multi("columns", "Columns")
+          )}
         </>
       )}
       {o.kind === "rename" && (

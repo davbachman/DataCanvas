@@ -131,6 +131,22 @@ p.recipes.push(
     }),
   ]),
 );
+for (const [id, mode, pattern, ignoreCase] of [
+  ["selected_names", "keep", "^(ID|GROUP|LARGE)$", true],
+  ["dropped_names", "drop", "date$", false],
+  ["no_columns", "keep", "no_match", false],
+] as const) {
+  p.recipes.push(
+    recipe(id, [
+      {
+        id: `${id}_op`,
+        kind: "select",
+        version: 2,
+        params: { columns: [], mode, selection: "regex", pattern, ignoreCase },
+      },
+    ]),
+  );
+}
 await writeFile(
   "tests/fixtures/adversarial.datacanvas",
   packBundle({ project: p, assets: { [source.assetRef]: bytes } }),

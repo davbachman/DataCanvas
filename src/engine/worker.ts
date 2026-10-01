@@ -1,4 +1,4 @@
-import { previewRegex } from "../compiler/regex";
+import { previewRegex, matchColumnNames } from "../compiler/regex";
 import { wasmDB } from "./wasm";
 import { Engine } from "./core";
 import { resolveChart } from "../charts/resolve";
@@ -22,6 +22,9 @@ async function handle({ data }: MessageEvent) {
     } else if (kind === "regexPreview") {
       if (!engine) engine = new Engine(await wasmDB(), wasmDB);
       result = await previewRegex(engine.db, data.params, data.sample);
+    } else if (kind === "columnRegexPreview") {
+      if (!engine) engine = new Engine(await wasmDB(), wasmDB);
+      result = await matchColumnNames(engine.db, data.columns, data.params);
     } else if (!engine) throw new Error("Run a recipe first");
     else if (kind === "chart") result = await resolveChart(engine, data.chart);
     else if (kind === "distribution")

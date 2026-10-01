@@ -49,3 +49,5 @@ Keyboard: Tab navigates controls, Enter activates them, Ctrl/⌘ S downloads a b
 ## Pattern-based text operations
 
 Choose **Regular expression** in the Clean toolbox to filter matching/nonmatching rows, replace text, or extract a capture into a new column. Test a sample in the inspector before running. See [patterns, flags, replacements, and missing-value rules](REGEX.md).
+
+To select **columns by their names**, add **Select columns**, choose **Select by → Regular expression**, enter a pattern such as `^sales_`, and choose **keep** or **drop**. Use **Preview matching columns** to inspect names before running.
