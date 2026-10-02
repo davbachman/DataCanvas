@@ -40,7 +40,7 @@ Reports combine authored text, live charts, tables, and captions. Link prose to 
 
 ## Map locations and regions
 
-Choose **Point map** to plot numeric longitude/latitude, or **Choropleth map** to join region keys to boundaries and shade an explicit sum, mean, count, or other statistic. World countries are bundled; custom Polygon/MultiPolygon GeoJSON can be imported and travels with the project. Choose a projection, **Fit mapped data**, and inspect unmatched keys or omitted coordinates in the notes. The **Places, points & regions** example demonstrates both families. See the [mapping guide](MAPPING.md) for joins, coordinate rules, imports, and limits.
+Choose **Point map** to plot numeric longitude/latitude, or **Choropleth map** to join region keys to boundaries and shade an explicit sum, mean, count, or other statistic. World countries are bundled; custom Polygon/MultiPolygon GeoJSON can be imported and travels with the project. Choose a projection, **Fit mapped data**, and inspect unmatched keys or omitted coordinates in the notes. Select **Basemap → Street map — OpenStreetMap (online)** for street detail, then drag/scroll or use keyboard controls to navigate. Adjust **Overlay opacity** to show streets underneath regions. The **Places, points & regions** example demonstrates both families. See the [mapping guide](MAPPING.md) for joins, coordinate rules, imports, and limits.
 
 ## Preserve work
 

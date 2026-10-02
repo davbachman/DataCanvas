@@ -1,3 +1,4 @@
+import { exportSVG } from "../charts/imageExport";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Trash2, Download, Plus } from "lucide-react";
 import type { Project, ReportItem } from "../domain/model";
@@ -71,8 +72,11 @@ export function Report({
           const view = new View(parse(compile(c.spec as any).spec), {
             renderer: "none",
           });
-          content = await view.toSVG();
-          view.finalize();
+          try {
+            content = await exportSVG(view);
+          } finally {
+            view.finalize();
+          }
           content += c.notes
             .map((n) => `<p class="note">${escape(n)}</p>`)
             .join("");

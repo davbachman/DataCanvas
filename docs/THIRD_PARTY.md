@@ -31,3 +31,5 @@ Runtime/build dependencies are pinned in `package.json` and `package-lock.json`.
 `public/blockly` contains Blockly SVG media copied from the installed package. Its Apache-2.0 license is included alongside the media. Fonts use the operating system stack; the application does not fetch fonts or analytics from remote services.
 
 `src/charts/geography/world.json` derives from world-atlas 2.0.2 countries-110m data. Its ISC notice is copied to `public/geography/LICENSE-world-atlas.txt`. Natural Earth source data is public domain. Maps include provenance in captions and exported figures; detailed provenance and geographic limitations are in the [mapping guide](MAPPING.md).
+
+Optional street tiles are served by OpenStreetMap under its [tile usage policy](https://operations.osmfoundation.org/policies/tiles/). Maps and exported figures credit [© OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Tiles are not distributed with the application or portable project bundles.

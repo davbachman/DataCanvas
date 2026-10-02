@@ -1,3 +1,4 @@
+import { visibleTiles, OSM_ATTRIBUTION } from "./tiles";
 import worldJSON from "./geography/world.json" with { type: "json" };
 import {
   defaultMap,
@@ -54,10 +55,16 @@ export async function resolveMap(
       ? WORLD_ATTRIBUTION
       : m.attribution ||
         `Custom boundaries: ${m.boundaryName || "GeoJSON"} (attribution not supplied)`;
+  const street = m.tiles === "openstreetmap";
   const notes = [
     attribution,
     "Coordinates use WGS84 longitude/latitude degrees. Map view and zoom can clip geography; reset the view to see the world.",
   ];
+  if (street)
+    notes.push(
+      OSM_ATTRIBUTION,
+      "Street tiles are requested from OpenStreetMap for the visible view. Your table stays local; the provider receives your IP address and viewed tile locations. Tiles are not stored in portable projects. Exports require the displayed tiles to load successfully.",
+    );
   const layers: any[] = [
     {
       data: { sphere: true },
@@ -68,12 +75,13 @@ export async function resolveMap(
         strokeWidth: 0.5,
       },
     },
+    ...visibleTiles(m),
     {
       data: { values: features.map((f) => ({ _geometry: f.geometry })) },
       mark: {
         type: "geoshape",
-        fill: "#e0e7e1",
-        stroke: "#ffffff",
+        fill: street ? null : "#e0e7e1",
+        stroke: street ? "#78918b" : "#ffffff",
         strokeWidth: 0.6,
       },
       encoding: { shape: { field: "_geometry", type: "geojson" } },
@@ -325,12 +333,18 @@ export async function resolveMap(
     layers.push({
       data: { values },
       mark: geometryIndex
-        ? { type: "geoshape", stroke: "white", strokeWidth: 0.6, tooltip: true }
+        ? {
+            type: "geoshape",
+            stroke: "white",
+            strokeWidth: 0.6,
+            tooltip: true,
+            opacity: m.overlayOpacity ?? (street ? 0.65 : 1),
+          }
         : {
             type: "point",
             filled: true,
             size: layer.constantSize || 65,
-            opacity: 0.8,
+            opacity: m.overlayOpacity ?? (street ? 0.65 : 0.8),
             stroke: "white",
             strokeWidth: 0.5,
             tooltip: true,
@@ -339,7 +353,7 @@ export async function resolveMap(
     });
     if (geometryIndex)
       notes.push(
-        `${table.rowCount} regions have matched data; ${features.length - table.rowCount} boundaries have no matched records and remain gray.`,
+        `${table.rowCount} regions have matched data; ${features.length - table.rowCount} boundaries have no matched records and ${street ? "remain unshaded over the street map" : "remain gray"}.`,
       );
   }
   return {
@@ -359,6 +373,7 @@ export async function resolveMap(
           chart.annotations || "Geographic data",
           `${omitted} layer-record omissions · ${m.projection}`,
           attribution,
+          ...(street ? [OSM_ATTRIBUTION] : []),
         ],
         anchor: "start",
         subtitleFontSize: 9,

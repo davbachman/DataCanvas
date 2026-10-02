@@ -2350,3 +2350,16 @@ details > summary {
   overflow-wrap: anywhere;
   font-size: 11px;
 }
+
+.map-attribution {
+  font-size: 11px;
+  margin: 6px 0 0;
+  text-align: right;
+}
+.plot[tabindex="0"] {
+  overflow: hidden;
+}
+.plot[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

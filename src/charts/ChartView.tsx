@@ -1,3 +1,6 @@
+import { mapNavigation } from "./mapNavigation";
+import { exportSVG, renderedImages } from "./imageExport";
+import type { MapSettings } from "../domain/geography";
 import { defaultMap, isMapMark } from "../domain/geography";
 import { MapControls } from "./MapControls";
 import { useEffect, useRef, useState } from "react";
@@ -20,17 +23,38 @@ export function Plot({
   onMark,
   onView,
   onBrush,
+  onMapView,
 }: {
   resolved: ResolvedChart;
+  onMapView?: (m: MapSettings) => void;
   onMark?: (layer: number, index: number) => void;
   onView?: (view: any) => void;
   onBrush?: (ranges: Record<string, any>) => void;
 }) {
   const container = useRef<HTMLDivElement>(null),
     [error, setError] = useState("");
+  const [tileError, setTileError] = useState(false);
+  const suppressUntil = useRef(0);
+  const mapViewCallback = useRef(onMapView);
+  mapViewCallback.current = onMapView;
+  const street = resolved.authored.map?.tiles === "openstreetmap";
+  useEffect(() => {
+    if (!onMapView || !resolved.authored.layers.some((l) => isMapMark(l.mark)))
+      return;
+    return mapNavigation(
+      container.current!,
+      resolved.authored.map || defaultMap(),
+      (m) => mapViewCallback.current?.(m),
+      () => {
+        suppressUntil.current = Date.now() + 400;
+      },
+    );
+  }, [resolved, !!onMapView]);
   useEffect(() => {
     let disposed = false;
     let view: any;
+    let tileTimer: ReturnType<typeof setTimeout> | undefined;
+    setTileError(false);
     embed(container.current!, resolved.spec as any, {
       actions: false,
       renderer: "svg",
@@ -43,7 +67,10 @@ export function Plot({
         }
         onView?.(view);
         view.addEventListener("click", (_: unknown, item: any) => {
-          if (item?.datum?._record !== undefined)
+          if (
+            Date.now() >= suppressUntil.current &&
+            item?.datum?._record !== undefined
+          )
             onMark?.(item.datum._layer, item.datum._record);
         });
         if (
@@ -55,18 +82,56 @@ export function Plot({
           view.addSignalListener("brush", (_: string, value: any) =>
             onBrush?.(value),
           );
+        if (street) {
+          const checkTiles = () => {
+            if (disposed) return;
+            const images = [...renderedImages(view).values()];
+            if (images.length && images.every((i) => i.complete))
+              setTileError(images.some((i) => !i.naturalWidth));
+            else tileTimer = setTimeout(checkTiles, 500);
+          };
+          tileTimer = setTimeout(checkTiles, 500);
+        }
         setError("");
       })
       .catch((e) => setError(e.message));
     return () => {
       disposed = true;
+      clearTimeout(tileTimer);
       view?.finalize();
     };
   }, [resolved]);
   return (
     <>
       {error && <p className="error-box">{error}</p>}
-      <div className="plot" ref={container} />
+      {tileError && (
+        <p role="status" className="warning-box">
+          Street tiles are unavailable. Your data is still shown; switch to
+          built-in boundaries or retry when online.
+        </p>
+      )}
+      <div
+        className="plot"
+        ref={container}
+        tabIndex={onMapView ? 0 : undefined}
+        aria-label={
+          onMapView
+            ? "Map: drag to pan, scroll to zoom, or use arrow and plus/minus keys"
+            : undefined
+        }
+      />
+      {street && (
+        <p className="map-attribution">
+          ©{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+          >
+            OpenStreetMap contributors
+          </a>
+        </p>
+      )}
     </>
   );
 }
@@ -184,6 +249,11 @@ export function ChartView({
                 <div className="plot-card">
                   <Plot
                     resolved={resolved}
+                    onMapView={
+                      mapping
+                        ? (m) => onChange({ ...chart, map: m })
+                        : undefined
+                    }
                     onView={(v) => (view.current = v)}
                     onBrush={(ranges) => {
                       const predicate = brushPredicate(ranges, columns);
@@ -209,7 +279,7 @@ export function ChartView({
                 <div className="chart-caption">
                   <span>
                     {mapping
-                      ? "Click a point or filled region to inspect contributors. Use map zoom and center controls to change the view."
+                      ? "Click a point or filled region to inspect contributors. Drag to pan; scroll to zoom. Arrow and plus/minus keys also work when the map is focused."
                       : "Click a mark to inspect contributors. Drag in a scatter/line plot to brush."}
                   </span>
                   <div className="inline">
@@ -225,12 +295,25 @@ export function ChartView({
                       <button
                         key={format}
                         onClick={async () => {
-                          const url = await view.current?.toImageURL(format);
-                          if (url) {
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = chart.name + "." + format;
-                            a.click();
+                          try {
+                            const svg = await exportSVG(view.current);
+                            if (format === "svg") {
+                              download(
+                                chart.name + ".svg",
+                                svg,
+                                "image/svg+xml",
+                              );
+                              return;
+                            }
+                            const url = await view.current?.toImageURL(format);
+                            if (url) {
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = chart.name + "." + format;
+                              a.click();
+                            }
+                          } catch (e) {
+                            setError((e as Error).message);
                           }
                         }}
                       >

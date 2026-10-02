@@ -25,6 +25,7 @@ React workspace / accessible recipe list / Blockly adapter
 - `editor/Blocks.tsx`: typed Blockly statement/expression projection. Block gestures and the accessible list produce canonical recipe edits. Coordinates and selection never serve as execution input.
 - `charts/resolve.ts`, `selection.ts`, `extract.ts`: explicit chart statistics, data lineage, range/category predicates, reusable statistical recipes, and generated Vega-Lite specs.
 - `domain/geography.ts`, `charts/maps.ts`, `MapControls.tsx`: bounded GeoJSON validation, spherical winding/projection fitting, bundled world geography, full-data region joins/aggregates, point validation, saved map views, and geographic Vega-Lite specs. `scripts/world-basemap.mjs` reproducibly converts pinned world-atlas data to the checked-in GeoJSON.
+- `charts/tiles.ts`, `mapNavigation.ts`, `imageExport.ts`: viewport-only OpenStreetMap tile selection, saved geographic navigation, and embedding already-loaded image pixels in standalone exports. Native resolution computes URLs without fetching imagery; browser renderers handle ordinary cached image requests.
 - `engine/queries.ts`: structural SELECT/WITH parser/allowlist, isolated database with only bound tables, disabled external access, typed comparison preserving multiplicity. No SQL-to-block round trip.
 - `persistence/import.ts`, `bundle.ts`: raw source retention, import diagnostics, portable ZIP validation, recovery, download transport.
 - `headless/api.ts`, `cli.ts`, `process.ts`: generic integration interface and caller-limited execution process.

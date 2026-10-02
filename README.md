@@ -2,7 +2,7 @@
 
 [Open Data Canvas](https://davbachman.github.io/DataCanvas/)
 
-A local-first visual workbench for cleaning, reshaping, combining, exploring, and visualizing tables. Build named recipes with snapping blocks, inspect every transformation, and preserve an analysis in a portable `.datacanvas` project. No account, backend, telemetry, or data upload is required.
+A local-first visual workbench for cleaning, reshaping, combining, exploring, and visualizing tables. Build named recipes with snapping blocks, inspect every transformation, and preserve an analysis in a portable `.datacanvas` project. No account, backend, telemetry, or data upload is required. Optional online street basemaps request tiles from OpenStreetMap; default maps make no external requests.
 
 ## Start exploring
 
@@ -12,7 +12,7 @@ A local-first visual workbench for cleaning, reshaping, combining, exploring, an
 4. **Run** or **Step**, then inspect Before/After, column profiles, checks, SQL, and contributing records.
 5. **Visualize table**, write a report, and **File → Save portable project**.
 
-The four synthetic, CC0 examples cover geographic points and regions, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, and your own GeoJSON boundaries. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
+The four synthetic, CC0 examples cover geographic points and regions, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, your own GeoJSON boundaries, and optional OpenStreetMap street tiles with pan/zoom. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
 
 ## Development
 

@@ -151,20 +151,45 @@ const boundarySchema = z.unknown().transform((v, ctx): GeoCollection => {
     return z.NEVER;
   }
 });
-export const mapSettingsSchema = z.object({
-  version: z.literal(1),
-  projection: z.enum(["equalEarth", "mercator", "equirectangular"]),
-  basemap: z.enum(["world", "custom"]),
-  boundaries: boundarySchema.optional(),
-  boundaryName: z.string().max(500).optional(),
-  attribution: z.string().max(2000).optional(),
-  featureKey: z.string().max(500),
-  zoom: z.number().min(0.5).max(2000),
-  centerLongitude: z.number().min(-180).max(180),
-  centerLatitude: z.number().min(-85).max(85),
-  graticule: z.boolean(),
-  colorScheme: z.enum(["blues", "viridis", "redblue"]),
-});
+export const mapSettingsSchema = z
+  .object({
+    version: z.union([z.literal(1), z.literal(2)]),
+    tiles: z.enum(["none", "openstreetmap"]).optional(),
+    overlayOpacity: z.number().min(0).max(1).optional(),
+    projection: z.enum(["equalEarth", "mercator", "equirectangular"]),
+    basemap: z.enum(["world", "custom"]),
+    boundaries: boundarySchema.optional(),
+    boundaryName: z.string().max(500).optional(),
+    attribution: z.string().max(2000).optional(),
+    featureKey: z.string().max(500),
+    zoom: z.number().min(0.5).max(262144),
+    centerLongitude: z.number().min(-180).max(180),
+    centerLatitude: z.number().min(-85).max(85),
+    graticule: z.boolean(),
+    colorScheme: z.enum(["blues", "viridis", "redblue"]),
+  })
+  .superRefine((m, ctx) => {
+    if (
+      (m.tiles === "openstreetmap" ||
+        m.overlayOpacity !== undefined ||
+        m.zoom > 2000) &&
+      m.version !== 2
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Street maps and overlay opacity require map version 2.",
+      });
+    if (m.tiles === "openstreetmap" && m.projection !== "mercator")
+      ctx.addIssue({
+        code: "custom",
+        message: "Street maps require the Mercator projection.",
+      });
+    if (m.tiles !== "openstreetmap" && m.zoom > 2000)
+      ctx.addIssue({
+        code: "custom",
+        message: "Built-in map zoom cannot exceed 2000.",
+      });
+  });
 export type MapSettings = z.infer<typeof mapSettingsSchema>;
 export const defaultMap = (): MapSettings => ({
   version: 1,

@@ -1,3 +1,4 @@
+import { mapZoomLimit } from "./tiles";
 import { useState } from "react";
 import type { Chart } from "../domain/model";
 import {
@@ -19,8 +20,17 @@ export function MapControls({
 }) {
   const [error, setError] = useState("");
   const m = chart.map || defaultMap();
+  const street = m.tiles === "openstreetmap";
+  const maxZoom = mapZoomLimit(m);
   const set = (key: keyof MapSettings, value: any) =>
-    onChange({ ...chart, map: { ...m, [key]: value } });
+    onChange({
+      ...chart,
+      map: {
+        ...m,
+        ...(key === "overlayOpacity" ? { version: 2 as const } : {}),
+        [key]: value,
+      },
+    });
   const keys =
     m.basemap === "world"
       ? ["name", "$id"]
@@ -35,13 +45,68 @@ export function MapControls({
     <fieldset className="subform map-controls">
       <legend>Map view & boundaries</legend>
       <Select
+        label="Basemap"
+        value={m.tiles || "none"}
+        options={[
+          { value: "none", label: "Built-in boundaries (offline)" },
+          {
+            value: "openstreetmap",
+            label: "Street map — OpenStreetMap (online)",
+          },
+        ]}
+        onChange={(v) =>
+          onChange({
+            ...chart,
+            map: {
+              ...m,
+              version: 2,
+              tiles: v as "none" | "openstreetmap",
+              projection: v === "openstreetmap" ? "mercator" : m.projection,
+              zoom: Math.min(
+                v === "openstreetmap"
+                  ? mapZoomLimit({ ...m, tiles: "openstreetmap" })
+                  : 2000,
+                m.zoom,
+              ),
+            },
+          })
+        }
+      />
+      {street && (
+        <small>
+          Online tiles use Web Mercator. OpenStreetMap receives your IP address
+          and viewed area; your table stays local. No offline tile downloads.
+        </small>
+      )}
+      <Field label="Overlay opacity">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={
+            m.overlayOpacity ??
+            (street
+              ? 0.65
+              : chart.layers.some((l) => l.mark === "choropleth")
+                ? 1
+                : 0.8)
+          }
+          onChange={(e) => set("overlayOpacity", Number(e.target.value))}
+        />
+      </Field>
+      <Select
         label="Projection"
         value={m.projection}
-        options={[
-          { value: "equalEarth", label: "Equal Earth (equal area)" },
-          { value: "mercator", label: "Mercator" },
-          { value: "equirectangular", label: "Equirectangular" },
-        ]}
+        options={
+          street
+            ? [{ value: "mercator", label: "Web Mercator (street tiles)" }]
+            : [
+                { value: "equalEarth", label: "Equal Earth (equal area)" },
+                { value: "mercator", label: "Mercator" },
+                { value: "equirectangular", label: "Equirectangular" },
+              ]
+        }
         onChange={(v) => set("projection", v)}
       />
       <Select
@@ -137,15 +202,15 @@ export function MapControls({
         </>
       )}
       <Text
-        label="Map zoom (0.5–2000)"
+        label={street ? "Street map zoom" : "Map zoom (0.5–2000)"}
         type="number"
         value={m.zoom}
         onChange={(v) =>
-          Number.isFinite(v) && v >= 0.5 && v <= 2000 && set("zoom", v)
+          Number.isFinite(v) && v >= 0.5 && v <= maxZoom && set("zoom", v)
         }
       />
       <div className="inline">
-        <button onClick={() => set("zoom", Math.min(2000, m.zoom * 1.5))}>
+        <button onClick={() => set("zoom", Math.min(maxZoom, m.zoom * 1.5))}>
           Zoom in
         </button>
         <button onClick={() => set("zoom", Math.max(0.5, m.zoom / 1.5))}>
@@ -212,8 +277,10 @@ export function MapControls({
       </label>
       <small>
         World boundaries: Natural Earth / world-atlas. Generalized, not for
-        navigation. Zoom and centering can clip geography. No external map
-        requests.
+        navigation. Zoom and centering can clip geography.
+        {street
+          ? " Street tiles © OpenStreetMap contributors."
+          : " No external map requests."}
       </small>
     </fieldset>
   );
