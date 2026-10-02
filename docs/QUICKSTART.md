@@ -38,6 +38,10 @@ Click a mark for contributing records. Brush a single-layer scatter/line plot to
 
 Reports combine authored text, live charts, tables, and captions. Link prose to evidence; subsequent table edits mark linked claims for review. Export HTML for a self-contained document with embedded figures, source fingerprints, attributions, and operation summaries. Print that HTML to PDF in your browser.
 
+## Map locations and regions
+
+Choose **Point map** to plot numeric longitude/latitude, or **Choropleth map** to join region keys to boundaries and shade an explicit sum, mean, count, or other statistic. World countries are bundled; custom Polygon/MultiPolygon GeoJSON can be imported and travels with the project. Choose a projection, **Fit mapped data**, and inspect unmatched keys or omitted coordinates in the notes. The **Places, points & regions** example demonstrates both families. See the [mapping guide](MAPPING.md) for joins, coordinate rules, imports, and limits.
+
 ## Preserve work
 
 IndexedDB recovery is automatic and distinct from downloading a portable `.datacanvas` ZIP. New/Open/example actions preserve the previous draft. Recover another draft from File. Undo/redo covers canonical edits. Source assets, drafts, expressions, notes, charts, reports, and saved queries travel in the project file.

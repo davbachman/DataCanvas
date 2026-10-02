@@ -22,8 +22,7 @@ export function markPredicate(
       ? { kind: "unary" as const, op: "is_missing", arg: col(id) }
       : binary("=", col(id), lit(value));
   const groups = [
-    layer.color,
-    layer.detail,
+    ...(layer.mark === "choropleth" ? [] : [layer.color, layer.detail]),
     chart.facetRow,
     chart.facetColumn,
   ].filter((x): x is string => !!x);
@@ -37,8 +36,8 @@ export function markPredicate(
   } else if (layer.x && row[layer.x] !== undefined)
     terms.push(equal(layer.x, row[layer.x]));
   if (
-    ["scatter", "line", "bar", "heatmap"].includes(layer.mark) &&
-    !layer.aggregate &&
+    ["scatter", "line", "bar", "heatmap", "map_points"].includes(layer.mark) &&
+    (layer.mark === "map_points" || !layer.aggregate) &&
     layer.y &&
     row[layer.y] !== undefined
   )

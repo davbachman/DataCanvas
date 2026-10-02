@@ -1,3 +1,4 @@
+import { mappingExample } from "./map-example";
 import {
   blankProject,
   column,
@@ -10,6 +11,12 @@ import {
 } from "./domain/model";
 import { createSource, defaultImport } from "./persistence/import";
 export const exampleInfo = [
+  {
+    id: "mapping",
+    title: "Places, points & regions",
+    description: "Map coordinates and compare country summaries",
+    tag: "MAP · MATCH · INSPECT",
+  },
   {
     id: "temperatures",
     title: "Messy temperatures",
@@ -37,6 +44,7 @@ const op = (id: string, kind: string, params: any, note = ""): Operation => ({
   note,
 });
 export async function example(name = "temperatures"): Promise<Bundle> {
+  if (name === "mapping") return mappingExample();
   const project = blankProject(),
     assets: Bundle["assets"] = {};
   project.projectId = "example_" + name;

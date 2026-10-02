@@ -1,3 +1,5 @@
+import { defaultMap, isMapMark } from "../domain/geography";
+import { MapControls } from "./MapControls";
 import { useEffect, useRef, useState } from "react";
 import embed from "vega-embed";
 import { Download, Plus } from "lucide-react";
@@ -121,6 +123,32 @@ export function ChartView({
         i === index ? { ...l, [key]: value } : l,
       ),
     });
+  const mapping = chart.layers.some((l) => isMapMark(l.mark));
+  const changeMark = (index: number, mark: Layer["mark"]) => {
+    const previous = chart.layers[index];
+    const longitude = columns.find((c) =>
+      /^(lon|lng|long|longitude)$/i.test(c.name),
+    )?.id;
+    const latitude = columns.find((c) => /^(lat|latitude)$/i.test(c.name))?.id;
+    const next: Layer = {
+      ...previous,
+      mark,
+      ...(mark === "map_points"
+        ? { x: longitude || previous.x, y: latitude || previous.y }
+        : {}),
+    };
+    onChange({
+      ...chart,
+      layers: chart.layers.map((l, i) => (i === index ? next : l)),
+      ...(isMapMark(mark)
+        ? {
+            map: chart.map || defaultMap(),
+            facetRow: undefined,
+            facetColumn: undefined,
+          }
+        : {}),
+    });
+  };
   const scale = (key: string, value: any) =>
     onChange({ ...chart, scales: { ...chart.scales, [key]: value } });
   return (
@@ -180,8 +208,9 @@ export function ChartView({
                 </div>
                 <div className="chart-caption">
                   <span>
-                    Click a mark to inspect contributors. Drag in a scatter/line
-                    plot to brush.
+                    {mapping
+                      ? "Click a point or filled region to inspect contributors. Use map zoom and center controls to change the view."
+                      : "Click a mark to inspect contributors. Drag in a scatter/line plot to brush."}
                   </span>
                   <div className="inline">
                     <button
@@ -274,8 +303,10 @@ export function ChartView({
                 "box",
                 "heatmap",
                 "rule",
+                { value: "map_points", label: "Point map" },
+                { value: "choropleth", label: "Choropleth map" },
               ]}
-              onChange={(v) => setLayer(i, "mark", v)}
+              onChange={(v) => changeMark(i, v as Layer["mark"])}
             />
             {layer.mark === "rule" ? (
               <Text
@@ -287,26 +318,43 @@ export function ChartView({
             ) : (
               <>
                 <ColumnSelect
-                  label="X encoding"
+                  label={
+                    layer.mark === "map_points"
+                      ? "Longitude"
+                      : layer.mark === "choropleth"
+                        ? "Region key column"
+                        : "X encoding"
+                  }
                   value={layer.x || ""}
                   columns={columns}
                   onChange={(v) => setLayer(i, "x", v)}
                 />
-                {!["count", "histogram"].includes(layer.mark) && (
+                {!["count", "histogram"].includes(layer.mark) &&
+                  !(
+                    layer.mark === "choropleth" && layer.aggregate === "count"
+                  ) && (
+                    <ColumnSelect
+                      label={
+                        layer.mark === "map_points"
+                          ? "Latitude"
+                          : layer.mark === "choropleth"
+                            ? "Map value"
+                            : "Y encoding"
+                      }
+                      value={layer.y || ""}
+                      columns={columns}
+                      onChange={(v) => setLayer(i, "y", v)}
+                    />
+                  )}
+                {layer.mark !== "choropleth" && (
                   <ColumnSelect
-                    label="Y encoding"
-                    value={layer.y || ""}
+                    label="Color field"
+                    value={layer.color || ""}
                     columns={columns}
-                    onChange={(v) => setLayer(i, "y", v)}
+                    optional
+                    onChange={(v) => setLayer(i, "color", v || undefined)}
                   />
                 )}
-                <ColumnSelect
-                  label="Color field"
-                  value={layer.color || ""}
-                  columns={columns}
-                  optional
-                  onChange={(v) => setLayer(i, "color", v || undefined)}
-                />
                 <details>
                   <summary>More encodings</summary>
                   <Multi
@@ -315,7 +363,10 @@ export function ChartView({
                     value={layer.tooltip || columns.map((c) => c.id)}
                     onChange={(v) => setLayer(i, "tooltip", v)}
                   />
-                  {(["size", "shape", "detail"] as const).map((k) => (
+                  {(layer.mark === "choropleth"
+                    ? []
+                    : (["size", "shape", "detail"] as const)
+                  ).map((k) => (
                     <ColumnSelect
                       key={k}
                       label={`${k} field`}
@@ -334,7 +385,7 @@ export function ChartView({
                     onChange={(v) => setLayer(i, "binWidth", v)}
                   />
                 )}{" "}
-                {["bar", "heatmap"].includes(layer.mark) && (
+                {["bar", "heatmap", "choropleth"].includes(layer.mark) && (
                   <Select
                     label="Visible statistical transformation"
                     value={layer.aggregate || ""}
@@ -384,7 +435,20 @@ export function ChartView({
               ...chart,
               layers: [
                 ...chart.layers,
-                { id: uid("layer"), mark: "rule", constant: 0 },
+                {
+                  id: uid("layer"),
+                  mark: mapping ? "map_points" : "rule",
+                  constant: 0,
+                  ...(mapping
+                    ? {
+                        x: columns.find((c) =>
+                          /^(lon|lng|longitude)$/i.test(c.name),
+                        )?.id,
+                        y: columns.find((c) => /^(lat|latitude)$/i.test(c.name))
+                          ?.id,
+                      }
+                    : {}),
+                },
               ],
             })
           }
@@ -392,66 +456,77 @@ export function ChartView({
           <Plus size={14} />
           Add layer
         </button>
-        <details>
-          <summary>Facets & scales</summary>
-          <ColumnSelect
-            label="Facet rows"
-            value={chart.facetRow || ""}
-            columns={columns}
-            optional
-            onChange={(v) => onChange({ ...chart, facetRow: v || undefined })}
+        {mapping && (
+          <MapControls
+            chart={chart}
+            onChange={onChange}
+            spec={resolved?.spec}
           />
-          <ColumnSelect
-            label="Facet columns"
-            value={chart.facetColumn || ""}
-            columns={columns}
-            optional
-            onChange={(v) =>
-              onChange({ ...chart, facetColumn: v || undefined })
-            }
-          />
-          {["xLog", "yLog", "zero"].map((k) => (
-            <label className="check" key={k}>
-              <input
-                type="checkbox"
-                checked={
-                  k === "zero"
-                    ? chart.scales.zero !== false
-                    : !!(chart.scales as any)[k]
-                }
-                onChange={(e) => scale(k, e.target.checked)}
-              />
-              {k === "zero"
-                ? "Zero baseline"
-                : k === "xLog"
-                  ? "Logarithmic x"
-                  : "Logarithmic y"}
-            </label>
-          ))}
-          {(["xTitle", "yTitle"] as const).map((k) => (
-            <Text
-              key={k}
-              label={
-                k === "xTitle" ? "X axis title / units" : "Y axis title / units"
+        )}
+        {!mapping && (
+          <details>
+            <summary>Facets & scales</summary>
+            <ColumnSelect
+              label="Facet rows"
+              value={chart.facetRow || ""}
+              columns={columns}
+              optional
+              onChange={(v) => onChange({ ...chart, facetRow: v || undefined })}
+            />
+            <ColumnSelect
+              label="Facet columns"
+              value={chart.facetColumn || ""}
+              columns={columns}
+              optional
+              onChange={(v) =>
+                onChange({ ...chart, facetColumn: v || undefined })
               }
-              value={chart.scales[k] || ""}
-              onChange={(v) => scale(k, v)}
             />
-          ))}
-          {(["xDomain", "yDomain"] as const).map((k) => (
-            <Text
-              key={k}
-              label={`${k[0].toUpperCase()} domain (min,max; blank = auto)`}
-              value={chart.scales[k]?.join(",") || ""}
-              onChange={(v) => {
-                const a = v.split(",").map(Number);
-                if (!v) scale(k, undefined);
-                else if (a.length === 2 && a.every(Number.isFinite))
-                  scale(k, a);
-              }}
-            />
-          ))}
-        </details>
+            {["xLog", "yLog", "zero"].map((k) => (
+              <label className="check" key={k}>
+                <input
+                  type="checkbox"
+                  checked={
+                    k === "zero"
+                      ? chart.scales.zero !== false
+                      : !!(chart.scales as any)[k]
+                  }
+                  onChange={(e) => scale(k, e.target.checked)}
+                />
+                {k === "zero"
+                  ? "Zero baseline"
+                  : k === "xLog"
+                    ? "Logarithmic x"
+                    : "Logarithmic y"}
+              </label>
+            ))}
+            {(["xTitle", "yTitle"] as const).map((k) => (
+              <Text
+                key={k}
+                label={
+                  k === "xTitle"
+                    ? "X axis title / units"
+                    : "Y axis title / units"
+                }
+                value={chart.scales[k] || ""}
+                onChange={(v) => scale(k, v)}
+              />
+            ))}
+            {(["xDomain", "yDomain"] as const).map((k) => (
+              <Text
+                key={k}
+                label={`${k[0].toUpperCase()} domain (min,max; blank = auto)`}
+                value={chart.scales[k]?.join(",") || ""}
+                onChange={(v) => {
+                  const a = v.split(",").map(Number);
+                  if (!v) scale(k, undefined);
+                  else if (a.length === 2 && a.every(Number.isFinite))
+                    scale(k, a);
+                }}
+              />
+            ))}
+          </details>
+        )}
         <Field label="Caption / limitations">
           <textarea
             value={chart.annotations}
@@ -460,9 +535,11 @@ export function ChartView({
             }
           />
         </Field>
-        <button onClick={() => onExtract(chart)}>
-          Extract transformation as recipe
-        </button>
+        {!mapping && (
+          <button onClick={() => onExtract(chart)}>
+            Extract transformation as recipe
+          </button>
+        )}
       </aside>
     </div>
   );

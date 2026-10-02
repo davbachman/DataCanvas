@@ -12,7 +12,7 @@ A local-first visual workbench for cleaning, reshaping, combining, exploring, an
 4. **Run** or **Step**, then inspect Before/After, column profiles, checks, SQL, and contributing records.
 5. **Visualize table**, write a report, and **File → Save portable project**.
 
-The three synthetic, CC0 examples cover messy temperatures, transaction/catalog joins, and unequal group sizes. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
+The four synthetic, CC0 examples cover geographic points and regions, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, and your own GeoJSON boundaries. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
 
 ## Development
 
@@ -53,6 +53,7 @@ See the [integration guide](docs/INTEGRATION.md) for the versioned API, typed re
 
 - [User guide](docs/QUICKSTART.md)
 - [Regular expressions for filtering and text transformations](docs/REGEX.md)
+- [Mapping points, countries, and custom GeoJSON regions](docs/MAPPING.md)
 - [Project and result formats](docs/FORMATS.md)
 - [Headless and browser integration](docs/INTEGRATION.md)
 - [Architecture and extension points](docs/ARCHITECTURE.md)

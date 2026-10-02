@@ -1,3 +1,4 @@
+import { mapSettingsSchema, type MapSettings } from "./geography";
 import { z } from "zod";
 export const SEMANTIC_VERSION = "1.0.0";
 export type Storage =
@@ -73,7 +74,9 @@ export interface Layer {
     | "histogram"
     | "box"
     | "heatmap"
-    | "rule";
+    | "rule"
+    | "map_points"
+    | "choropleth";
   x?: string;
   x2?: string;
   y?: string;
@@ -93,6 +96,7 @@ export interface Chart {
   name: string;
   inputRecipeId: string;
   layers: Layer[];
+  map?: MapSettings;
   facetRow?: string;
   facetColumn?: string;
   scales: {
@@ -253,6 +257,8 @@ export const projectSchema = z.object({
               "box",
               "heatmap",
               "rule",
+              "map_points",
+              "choropleth",
             ]),
             x: z.string().optional(),
             x2: z.string().optional(),
@@ -274,6 +280,7 @@ export const projectSchema = z.object({
         )
         .min(1)
         .max(10),
+      map: mapSettingsSchema.optional(),
       facetRow: z.string().optional(),
       facetColumn: z.string().optional(),
       scales: z.object({

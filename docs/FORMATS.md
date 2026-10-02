@@ -21,6 +21,14 @@ Each operation has `id`, `kind`, `version`, `params`, optional `note`, `draft`, 
 
 Archive loading checks format versions, source and recipe references, cycles, IDs, operation schemas, required assets, unsafe paths, and size limits. Absolute paths, `..` segments, and backslashes in archive paths are rejected. Limits: 64 MiB compressed and 256 MiB declared decompressed data. Fingerprints are checked during execution. Display strings and notes are text, not executable HTML.
 
+## Geographic charts
+
+Layer marks `map_points` and `choropleth` use `x` for longitude/region key and `y` for latitude/value. Choropleths store their explicit `aggregate` on the layer; absent aggregation requires one record per region. Geographic and Cartesian layers cannot share a chart.
+
+The optional chart `map` object has `version: 1`, `projection` (`equalEarth`, `mercator`, `equirectangular`), `basemap` (`world`, `custom`), `featureKey`, `zoom`, `centerLongitude`, `centerLatitude`, `graticule`, and `colorScheme` (`blues`, `viridis`, `redblue`). Custom maps also embed normalized `boundaries` (GeoJSON FeatureCollection), optional `boundaryName`, and `attribution`. `$id` selects feature IDs; other join keys select properties. Validation and numeric limits are defined in `domain/geography.ts` and the [mapping guide](MAPPING.md).
+
+World geometry is pinned to the app's bundled Natural Earth/world-atlas version; custom geometry is retained directly in the manifest. A missing map object on a geographic chart uses the world/Equal Earth defaults. Project schema remains 1; earlier releases reject the new mark values instead of rendering them as Cartesian charts. Map version values other than 1 are rejected. Resolved geographic specifications embed geometry and preserve typed statistical tables and contributors in the same execution result format.
+
 ## Execution result v1
 
 `result.json` has `formatName: "Data Canvas execution"`, `resultVersion: 1`, `semanticVersion`, `engineVersion`, `revision`, `status`, `tables`, `steps`, `diagnostics`, `errors`, `elapsedMs`, `sql`, optional `sourceOverrides`, and `charts`.

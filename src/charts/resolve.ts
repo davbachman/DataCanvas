@@ -1,3 +1,5 @@
+import { isMapMark } from "../domain/geography";
+import { resolveMap } from "./maps";
 import { type Chart, type Layer, CanvasError, column } from "../domain/model";
 import { Engine, plainValue, type TableResult } from "../engine/core";
 import { quote as q, requireColumn, aggregate } from "../compiler/expressions";
@@ -14,6 +16,8 @@ export async function resolveChart(
   engine: Engine,
   chart: Chart,
 ): Promise<ResolvedChart> {
+  if (chart.layers.some((l) => isMapMark(l.mark)))
+    return resolveMap(engine, chart);
   const input = engine.relations.get(chart.inputRecipeId);
   if (!input) throw new CanvasError("BLOCKED", "Run the chart’s recipe first.");
   const tables: TableResult[] = [],
