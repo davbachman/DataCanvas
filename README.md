@@ -12,7 +12,7 @@ A local-first visual workbench for cleaning, reshaping, combining, exploring, an
 4. **Run** or **Step**, then inspect Before/After, column profiles, checks, SQL, and contributing records.
 5. **Visualize table**, write a report, and **File → Save portable project**.
 
-The four synthetic, CC0 examples cover geographic points and regions, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, your own GeoJSON boundaries, and optional OpenStreetMap street tiles with pan/zoom. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
+The six synthetic, CC0 examples cover bike availability on a street map, tree-cover percentages in custom regions, geographic points and countries, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, your own GeoJSON boundaries, and optional OpenStreetMap street tiles with pan/zoom. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
 
 ## Development
 

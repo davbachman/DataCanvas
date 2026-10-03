@@ -8,6 +8,8 @@ for (const name of [
   "weighting",
   "adversarial",
   "mapping",
+  "bikes",
+  "trees",
 ]) {
   test(`browser/headless semantic parity: ${name}`, async ({ page }) => {
     await page.goto("./");

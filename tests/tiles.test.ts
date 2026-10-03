@@ -90,7 +90,21 @@ it("adds street imagery without changing full-data map statistics or contributor
     const before = await resolveChart(engine, chart);
     chart.map = { ...street(), overlayOpacity: 0.4 };
     const after = await resolveChart(engine, chart);
-    expect(after.tables).toEqual(before.tables);
+    // Grouped results are unordered: compare each row together with its lineage.
+    const canonical = (tables: typeof after.tables) =>
+      tables.map((t) => {
+        const pairs = t.rows
+          .map((row, i) => ({ row, lineage: t.lineage[i] }))
+          .sort((a, b) =>
+            String(a.row.country).localeCompare(String(b.row.country)),
+          );
+        return {
+          ...t,
+          rows: pairs.map((p) => p.row),
+          lineage: pairs.map((p) => p.lineage),
+        };
+      });
+    expect(canonical(after.tables)).toEqual(canonical(before.tables));
     expect(after.omitted).toBe(before.omitted);
     expect(after.spec.layer.some((l: any) => l.mark.type === "image")).toBe(
       true,

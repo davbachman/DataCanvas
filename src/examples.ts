@@ -1,3 +1,4 @@
+import { bikeStationsExample, treeCoverExample } from "./geographic-examples";
 import { mappingExample } from "./map-example";
 import {
   blankProject,
@@ -11,6 +12,20 @@ import {
 } from "./domain/model";
 import { createSource, defaultImport } from "./persistence/import";
 export const exampleInfo = [
+  {
+    id: "bikes",
+    title: "Bikes around the harbor",
+    description:
+      "Explore fictional station availability on an online OpenStreetMap basemap",
+    tag: "STREET MAP · FILTER · COMPARE",
+  },
+  {
+    id: "trees",
+    title: "Tree cover: totals vs. percentages",
+    description:
+      "Compare synthetic canopy surveys using custom regions — works offline",
+    tag: "REGION MAP · NORMALIZE · COMPARE",
+  },
   {
     id: "mapping",
     title: "Places, points & regions",
@@ -44,6 +59,8 @@ const op = (id: string, kind: string, params: any, note = ""): Operation => ({
   note,
 });
 export async function example(name = "temperatures"): Promise<Bundle> {
+  if (name === "bikes") return bikeStationsExample();
+  if (name === "trees") return treeCoverExample();
   if (name === "mapping") return mappingExample();
   const project = blankProject(),
     assets: Bundle["assets"] = {};

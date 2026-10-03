@@ -305,10 +305,20 @@ export default function App() {
       client.current?.invalidate();
       client.current?.cancel();
       setBundle(next);
-      setSelected({
-        kind: next.project.recipes.length ? "recipe" : "source",
-        id: next.project.recipes[0]?.id || next.project.sources[0]?.id || "",
-      });
+      const openingChart = next.project.charts.find(
+        (c) => c.id === next.project.viewState.selectedChart,
+      );
+      setSelected(
+        openingChart
+          ? { kind: "chart", id: openingChart.id }
+          : {
+              kind: next.project.recipes.length ? "recipe" : "source",
+              id:
+                next.project.recipes[0]?.id ||
+                next.project.sources[0]?.id ||
+                "",
+            },
+      );
       setOperationId(next.project.recipes[0]?.operations[0]?.id || "");
       setView("workspace");
       setStatus("stale");
@@ -2212,8 +2222,41 @@ export default function App() {
                   key={info.id}
                   onClick={async () => loadBundle(await example(info.id))}
                 >
-                  <div className={"example-art art-" + i}>
-                    {i === 0 ? (
+                  <div
+                    className={
+                      "example-art " +
+                      (["bikes", "trees"].includes(info.id)
+                        ? "art-map"
+                        : "art-" + (i - 2))
+                    }
+                  >
+                    {["bikes", "trees"].includes(info.id) ? (
+                      <svg viewBox="0 0 240 100" aria-hidden="true">
+                        <path
+                          d="M0 72L60 46L104 66L168 34L240 48M46 0L64 100M162 0L145 100"
+                          fill="none"
+                          stroke="#fff"
+                          strokeWidth="8"
+                        />
+                        {info.id === "bikes" ? (
+                          <g fill="#277c6c" stroke="#fff" strokeWidth="3">
+                            <circle cx="58" cy="47" r="10" />
+                            <circle cx="108" cy="64" r="7" />
+                            <circle cx="163" cy="37" r="13" />
+                            <circle cx="205" cy="45" r="8" />
+                          </g>
+                        ) : (
+                          <g stroke="#fff" strokeWidth="3">
+                            <path d="M20 15H86V49H20Z" fill="#46327e" />
+                            <path d="M86 15H152V49H86Z" fill="#21918c" />
+                            <path d="M152 15H218V49H152Z" fill="#a0da39" />
+                            <path d="M20 49H86V85H20Z" fill="#3b528b" />
+                            <path d="M86 49H152V85H86Z" fill="#28ae80" />
+                            <path d="M152 49H218V85H152Z" fill="#becbc5" />
+                          </g>
+                        )}
+                      </svg>
+                    ) : i === 2 ? (
                       <>
                         <i />
                         <i />
@@ -2221,7 +2264,7 @@ export default function App() {
                         <i />
                         <i />
                       </>
-                    ) : i === 1 ? (
+                    ) : i === 3 ? (
                       <>
                         <span>001</span>
                         <span>001</span>
@@ -2245,7 +2288,10 @@ export default function App() {
               ))}
             </div>
             <footer>
-              <span>Synthetic datasets · CC0 · no external data requests</span>
+              <span>
+                Synthetic datasets · CC0 · the street-map example loads online
+                tiles
+              </span>
             </footer>
           </section>
         </div>

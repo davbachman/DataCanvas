@@ -2,6 +2,16 @@
 
 Open the **Places, points & regions** example to explore a point map and a country choropleth. The default maps run locally with bundled boundaries. An optional OpenStreetMap street basemap adds online roads, buildings, and place labels without an API key.
 
+## Editable map examples
+
+Open **Explore an example** (or click the Data Canvas logo) and choose:
+
+- **Bikes around the harbor** — eight fictional stations near Seattle, mapped over online OpenStreetMap tiles. Point color shows availability as a percentage; size shows station capacity. A derived percentage and a filter identify the three stations at or below 25%. A bar chart and guided report let you compare stations without geography. Station locations/counts are synthetic, not real-time or official bike-service data. The card discloses online tile requests before opening; switch Basemap to Built-in boundaries for local-only rendering.
+- **Tree cover: totals vs. percentages** — six fictional districts with embedded schematic GeoJSON. Compare canopy hectares with coverage percentages: North has the largest total (20 ha), while Northeast has the largest percentage (60%). Southeast's missing observation stays gray. Supplied surveyed areas are illustrative denominators, not areas calculated from the polygons. Both maps work without online tiles.
+- **Places, points & regions** — the smaller introductory example of coordinate validity, country-key matching, and contributing records.
+
+The two guided examples open directly to their first map. Open **Report** for questions to explore or select a recipe to edit the calculation. Each is also available as a portable project: [bikes](../public/examples/bikes.datacanvas), [tree cover](../public/examples/trees.datacanvas). Regenerate only these bundles with `npx tsx scripts/examples.ts bikes trees`; omit the names to regenerate every public example.
+
 ## Points from a table
 
 1. Import a table, build a recipe, and choose **Visualize table**.
