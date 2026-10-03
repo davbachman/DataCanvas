@@ -1,3 +1,4 @@
+import { stylingFixture } from "./fixtures/styling";
 import { readFile } from "node:fs/promises";
 import { packBundle, unpackBundle } from "../src/persistence/bundle";
 import { it, expect } from "vitest";
@@ -175,6 +176,47 @@ it("opening chart blocks preserves every bundled chart definition", async () => 
       } finally {
         ws.dispose();
       }
+    }
+  }
+});
+
+it("style, layout, stacking and facet blocks round-trip and update the shared chart definition", async () => {
+  const bundle = await stylingFixture();
+  for (const chart of bundle.project.charts) {
+    const ws = workspace(chart);
+    try {
+      expect(readChartWorkspace(ws, chart)).toEqual(chart);
+      if (chart.id === "comparison") {
+        ws.getBlocksByType("dcv_style_layout", false)[0].setFieldValue(
+          "overlay",
+          "arrangement",
+        );
+        ws.getBlocksByType("dcv_style_theme", false)[0].setFieldValue(
+          "whitegrid",
+          "theme",
+        );
+        ws.getBlocksByType("dcv_stack", false)[0].setFieldValue(
+          "normalize",
+          "STACK",
+        );
+        const next = readChartWorkspace(ws, chart);
+        expect(next.style).toMatchObject({
+          arrangement: "overlay",
+          theme: "whitegrid",
+          width: 320,
+          font: "serif",
+        });
+        expect(next.layers.some((l) => l.stack === "normalize")).toBe(true);
+        expect(next.layers[0].label).toBe("Totals by country");
+      } else {
+        const block = ws.getBlocksByType("dcv_style_facets", false)[0];
+        block.setFieldValue("4", "facetColumns");
+        expect(readChartWorkspace(ws, chart).style?.facetColumns).toBe(4);
+        block.dispose(true);
+        expect(readChartWorkspace(ws, chart).facetColumn).toBeUndefined();
+      }
+    } finally {
+      ws.dispose();
     }
   }
 });

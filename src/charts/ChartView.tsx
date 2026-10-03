@@ -1,3 +1,4 @@
+import { StyleControls } from "./StyleControls";
 import { ChartBlocks } from "./ChartBlocks";
 import { isPieMark, canOrient } from "../domain/charts";
 import { mapNavigation } from "./mapNavigation";
@@ -76,6 +77,7 @@ export function Plot({
             onMark?.(item.datum._layer, item.datum._record);
         });
         if (
+          resolved.authored.style?.arrangement !== "subplots" &&
           resolved.authored.layers.length === 1 &&
           ["scatter", "line"].includes(resolved.authored.layers[0].mark) &&
           !resolved.authored.facetRow &&
@@ -259,6 +261,7 @@ export function ChartView({
         </div>
         {tab === "Chart blocks" && (
           <ChartBlocks
+            key={chart.id}
             chart={chart}
             columns={columns}
             recipes={project.recipes}
@@ -405,6 +408,13 @@ export function ChartView({
         {chart.layers.map((layer, i) => (
           <fieldset className="subform" key={layer.id}>
             <legend>Layer {i + 1}</legend>
+            <Text
+              label="Layer / panel label"
+              value={layer.label || ""}
+              onChange={(v) =>
+                setLayer(i, "label", v.slice(0, 120) || undefined)
+              }
+            />
             <Select
               label="Chart family"
               value={layer.mark}
@@ -433,6 +443,22 @@ export function ChartView({
                   { value: "horizontal", label: "Horizontal" },
                 ]}
                 onChange={(v) => setLayer(i, "orientation", v)}
+              />
+            )}
+            {canOrient(layer.mark) && (
+              <Select
+                label="Bar stacking"
+                value={layer.stack || "auto"}
+                options={[
+                  { value: "auto", label: "Auto" },
+                  { value: "none", label: "Overlay (no stacking)" },
+                  { value: "zero", label: "Stacked" },
+                  { value: "normalize", label: "Percentage stacked" },
+                  { value: "center", label: "Centered stack" },
+                ]}
+                onChange={(v) =>
+                  setLayer(i, "stack", v === "auto" ? undefined : v)
+                }
               />
             )}
             {layer.mark === "rule" ? (
@@ -693,6 +719,7 @@ export function ChartView({
             ))}
           </details>
         )}
+        <StyleControls chart={chart} onChange={onChange} />
         <Field label="Caption / limitations">
           <textarea
             value={chart.annotations}

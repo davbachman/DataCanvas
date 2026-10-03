@@ -333,7 +333,11 @@ export default function App() {
       setError((e as Error).message);
     }
   }
+  const autoRunTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   async function run(mode: "all" | "selected" | "step" = "selected") {
+    clearTimeout(autoRunTimer.current);
     const b = bundleRef.current;
     if (!b || !client.current) return;
     const serial = ++runSerial.current;
@@ -388,8 +392,8 @@ export default function App() {
   }
   useEffect(() => {
     if (!bundle || !auto) return;
-    const timer = setTimeout(() => run("all"), 650);
-    return () => clearTimeout(timer);
+    autoRunTimer.current = setTimeout(() => run("all"), 650);
+    return () => clearTimeout(autoRunTimer.current);
   }, [bundle?.project.projectId, bundle?.project.revision, auto]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -1137,10 +1141,10 @@ export default function App() {
           ) : chart ? (
             <ChartView
               chart={chart}
-              columns={result?.tables[chart.inputRecipeId]?.columns || []}
+              columns={getColumns({ kind: "recipe", id: chart.inputRecipeId })}
               project={p}
               client={client.current!}
-              revision={result?.revision ?? -1}
+              revision={result ? client.current!.generation : -1}
               onChange={(c) =>
                 edit((p) => {
                   p.charts = p.charts.map((x) => (x.id === c.id ? c : x));

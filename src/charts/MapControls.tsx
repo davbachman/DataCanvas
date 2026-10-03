@@ -251,7 +251,12 @@ export function MapControls({
                 },
               })),
           );
-          const view = fitMapView(m, { type: "FeatureCollection", features });
+          const view = fitMapView(
+            m,
+            { type: "FeatureCollection", features },
+            chart.style?.width,
+            chart.style?.height,
+          );
           if (view) onChange({ ...chart, map: { ...m, ...view } });
         }}
       >

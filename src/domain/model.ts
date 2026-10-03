@@ -1,3 +1,4 @@
+import { chartStyleSchema, type ChartStyle } from "./chartStyle";
 import { mapSettingsSchema, type MapSettings } from "./geography";
 import { z } from "zod";
 export const SEMANTIC_VERSION = "1.0.0";
@@ -94,6 +95,8 @@ export interface Layer {
   constantSize?: number;
   showPercent?: boolean;
   orientation?: "vertical" | "horizontal";
+  stack?: "none" | "zero" | "normalize" | "center";
+  label?: string;
 }
 export interface Chart {
   id: string;
@@ -101,6 +104,7 @@ export interface Chart {
   inputRecipeId: string;
   layers: Layer[];
   map?: MapSettings;
+  style?: ChartStyle;
   facetRow?: string;
   facetColumn?: string;
   scales: {
@@ -279,6 +283,8 @@ export const projectSchema = z.object({
             constant: z.number().finite().optional(),
             showPercent: z.boolean().optional(),
             orientation: z.enum(["vertical", "horizontal"]).optional(),
+            stack: z.enum(["none", "zero", "normalize", "center"]).optional(),
+            label: z.string().max(120).optional(),
             constantSize: z.number().min(1).max(1000).optional(),
             constantColor: z
               .string()
@@ -289,6 +295,7 @@ export const projectSchema = z.object({
         .min(1)
         .max(10),
       map: mapSettingsSchema.optional(),
+      style: chartStyleSchema.optional(),
       facetRow: z.string().optional(),
       facetColumn: z.string().optional(),
       scales: z.object({

@@ -1,3 +1,4 @@
+import { styleGroups } from "./styleFields";
 import { useEffect, useRef, useState } from "react";
 import * as Blockly from "blockly/core";
 import type { Chart, Column, Recipe } from "../domain/model";
@@ -58,6 +59,7 @@ export function ChartBlocks({
   const rebuild = () => {
     const ws = workspace.current;
     if (!ws) return;
+    clearTimeout(timer.current);
     syncing.current = true;
     Blockly.Events.disable();
     try {
@@ -150,10 +152,19 @@ export function ChartBlocks({
         let last = ws.getBlockById("chart_from")!;
         while (last.getNextBlock()) last = last.getNextBlock()!;
         last.nextConnection!.connect(layer.previousConnection!);
+      } else if (kind.startsWith("style_")) {
+        const b = ws.newBlock("dcv_" + kind),
+          root = ws.getBlockById("chart_from")!;
+        const first = root.getNextBlock();
+        if (first) first.previousConnection!.disconnect();
+        root.nextConnection!.connect(b.previousConnection!);
+        if (first) b.nextConnection!.connect(first.previousConnection!);
       } else {
         const b = ws.newBlock("dcv_" + kind);
         // A selected layer receives the new block; otherwise use the first layer.
         group ||= ws.getBlockById("chart_from")?.getNextBlock() || null;
+        while (group && group.type !== "dcv_layer")
+          group = group.getNextBlock();
         let tail = group?.getInputTargetBlock("SEQUENCE");
         while (tail?.getNextBlock()) tail = tail.getNextBlock();
         if (tail?.nextConnection)
@@ -171,16 +182,27 @@ export function ChartBlocks({
         From recipe → statistics → draw → appearance. Counts and bins use the
         first field; other statistics use the value field. Map fields are
         longitude/latitude or region/value. Reorder layers to change drawing
-        order. Advanced settings stay in the controls.
+        order, or give each layer a subplot in a Layout block. Layout and style
+        blocks apply to the whole chart.
       </p>
       <div className="inline chart-block-toolbar">
-        {["layer", "orientation", "encoding", "labels"].map((kind) => (
+        {["layer", "orientation", "stack", "encoding", "labels"].map((kind) => (
           <button key={kind} onClick={() => add(kind)}>
             Add {kind} block
           </button>
         ))}
         <button onClick={rebuild}>Reset blocks to saved chart</button>
       </div>
+      <details className="chart-style-block-tools">
+        <summary>Add layout & style blocks</summary>
+        <div className="inline chart-block-toolbar">
+          {styleGroups.map((group) => (
+            <button key={group.id} onClick={() => add("style_" + group.id)}>
+              Add {group.label} block
+            </button>
+          ))}
+        </div>
+      </details>
       {error && (
         <p role="alert" className="warning-box">
           {error}

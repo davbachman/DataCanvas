@@ -7,8 +7,8 @@ export const mapZoomLimit = (m: MapSettings) =>
 const radians = Math.PI / 180;
 export const mercatorY = (lat: number) =>
   Math.log(Math.tan(Math.PI / 4 + (lat * radians) / 2));
-/** Only tiles intersecting the 560 × 340 viewport; no prefetch or persistent tile cache. */
-export function visibleTiles(m: MapSettings) {
+/** Only tiles intersecting the current viewport; no prefetch or persistent tile cache. */
+export function visibleTiles(m: MapSettings, width = 560, height = 340) {
   if (m.tiles !== "openstreetmap") return [];
   const world = 2 * Math.PI * 85 * m.zoom;
   const z = Math.max(0, Math.min(19, Math.ceil(Math.log2(world / 256))));
@@ -18,19 +18,19 @@ export function visibleTiles(m: MapSettings) {
   const cy = ((1 - mercatorY(m.centerLatitude) / Math.PI) / 2) * n;
   const tiles = [];
   for (
-    let y = Math.max(0, Math.floor(cy - 170 / size));
-    y <= Math.min(n - 1, Math.ceil(cy + 170 / size) - 1);
+    let y = Math.max(0, Math.floor(cy - height / 2 / size));
+    y <= Math.min(n - 1, Math.ceil(cy + height / 2 / size) - 1);
     y++
   ) {
     for (
-      let x = Math.floor(cx - 280 / size);
-      x <= Math.ceil(cx + 280 / size) - 1;
+      let x = Math.floor(cx - width / 2 / size);
+      x <= Math.ceil(cx + width / 2 / size) - 1;
       x++
     ) {
       const wrappedX = ((x % n) + n) % n;
       tiles.push({
-        x: 280 + (x - cx) * size,
-        y: 170 + (y - cy) * size,
+        x: width / 2 + (x - cx) * size,
+        y: height / 2 + (y - cy) * size,
         url: `https://tile.openstreetmap.org/${z}/${wrappedX}/${y}.png`,
       });
     }

@@ -1,3 +1,4 @@
+import { stylingFixture } from "../fixtures/styling";
 import { horizontalFixture } from "../fixtures/horizontal";
 import { pieFixture } from "../fixtures/pies";
 import { packBundle } from "../../src/persistence/bundle";
@@ -14,6 +15,7 @@ for (const name of [
   "trees",
   "pies",
   "horizontal",
+  "styling",
 ]) {
   test(`browser/headless semantic parity: ${name}`, async ({ page }) => {
     await page.goto("./");
@@ -29,7 +31,9 @@ for (const name of [
         ? await pieFixture()
         : name === "horizontal"
           ? await horizontalFixture()
-          : await load(path);
+          : name === "styling"
+            ? await stylingFixture()
+            : await load(path);
     const bytes = Array.from(packBundle(bundle));
     const native = await run(bundle);
     const browser = await page.evaluate(async (data) => {

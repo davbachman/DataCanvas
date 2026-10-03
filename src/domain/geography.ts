@@ -206,7 +206,12 @@ export const isMapMark = (mark: string) =>
   mark === "map_points" || mark === "choropleth";
 
 /** Fit the rendered data using the same projection, rotation and scale as the chart. */
-export function fitMapView(m: MapSettings, data: GeoJSON.FeatureCollection) {
+export function fitMapView(
+  m: MapSettings,
+  data: GeoJSON.FeatureCollection,
+  width = 560,
+  height = 340,
+) {
   if (!data.features.length) return null;
   const [[west, south], [east, north]] = geoBounds(data);
   if (![west, south, east, north].every(Number.isFinite)) return null;
@@ -226,8 +231,8 @@ export function fitMapView(m: MapSettings, data: GeoJSON.FeatureCollection) {
     .translate([0, 0]);
   const [[x0, y0], [x1, y1]] = geoPath(projection).bounds(data);
   const scale = Math.min(
-    250 / Math.max(Math.abs(x0), Math.abs(x1), 0.002),
-    140 / Math.max(Math.abs(y0), Math.abs(y1), 0.002),
+    (width / 2 - 30) / Math.max(Math.abs(x0), Math.abs(x1), 0.002),
+    (height / 2 - 30) / Math.max(Math.abs(y0), Math.abs(y1), 0.002),
   );
   return {
     centerLongitude,

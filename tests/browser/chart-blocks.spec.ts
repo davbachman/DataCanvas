@@ -7,7 +7,10 @@ async function dropdown(page: any, current: string, next: string) {
     .locator(".chart-block-host")
     .getByRole("button", { name: "dropdown: " + current, exact: true })
     .click();
-  await page.getByRole("option", { name: next, exact: true }).click();
+  await page
+    .locator(".blocklyDropDownDiv")
+    .getByRole("option", { name: next, exact: true })
+    .click();
 }
 test("horizontal geometry, editable chart blocks, synchronization, undo and portable reports", async ({
   page,

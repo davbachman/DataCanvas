@@ -1,3 +1,5 @@
+import { styleGroups, fieldDefault, parseStyleField } from "./styleFields";
+import { chartStyleSchema, type ChartStyle } from "../domain/chartStyle";
 import * as Blockly from "blockly/core";
 import * as En from "blockly/msg/en";
 import {
@@ -27,6 +29,8 @@ function fieldOptions(block: Blockly.Block): [string, string][] {
   for (const l of chart.layers)
     for (const id of [l.x, l.y, l.color, l.size, l.shape, l.detail])
       if (id && !known.has(id)) known.set(id, "Unavailable: " + id);
+  for (const id of [chart.facetRow, chart.facetColumn])
+    if (id && !known.has(id)) known.set(id, "Unavailable: " + id);
   return [
     ["(none)", ""],
     ...[...known].map(([id, name]): [string, string] => [name, id]),
@@ -63,7 +67,12 @@ export function defineChartBlocks() {
   };
   Blockly.Blocks.dcv_layer = {
     init() {
-      this.appendDummyInput().appendField("LAYER");
+      this.appendDummyInput()
+        .appendField("LAYER")
+        .appendField(
+          new Blockly.FieldTextInput("", (value) => value.slice(0, 120)),
+          "TITLE",
+        );
       this.appendStatementInput("SEQUENCE").setCheck("ChartStatistics");
       this.setPreviousStatement(true, "ChartLayer");
       this.setNextStatement(true, "ChartLayer");
@@ -140,6 +149,70 @@ export function defineChartBlocks() {
       this.setMovable(false);
     },
   };
+  for (const group of styleGroups)
+    Blockly.Blocks["dcv_style_" + group.id] = {
+      init() {
+        this.appendDummyInput().appendField(group.label.toUpperCase());
+        if (group.id === "facets") {
+          this.appendDummyInput()
+            .appendField("rows")
+            .appendField(
+              new Blockly.FieldDropdown(() => fieldOptions(this)),
+              "ROW",
+            );
+          this.appendDummyInput()
+            .appendField("columns")
+            .appendField(
+              new Blockly.FieldDropdown(() => fieldOptions(this)),
+              "COLUMN",
+            );
+        }
+        for (const field of group.fields) {
+          const initial = fieldDefault(context(this).chart, field);
+          const editor =
+            field.type === "number"
+              ? new Blockly.FieldNumber(
+                  Number(initial),
+                  field.min,
+                  field.max,
+                  1,
+                )
+              : field.type === "boolean"
+                ? new Blockly.FieldCheckbox(initial ? "TRUE" : "FALSE")
+                : field.type === "select"
+                  ? new Blockly.FieldDropdown(field.options!)
+                  : new Blockly.FieldTextInput(String(initial));
+          this.appendDummyInput()
+            .appendField(field.label)
+            .appendField(editor, field.key);
+        }
+        this.setPreviousStatement(true, "ChartLayer");
+        this.setNextStatement(true, "ChartLayer");
+        this.setColour("#8172a4");
+        this.setTooltip(
+          "Applies to the complete chart. Layout and style blocks may appear anywhere in the connected layer sequence.",
+        );
+      },
+    };
+  Blockly.Blocks.dcv_stack = {
+    init() {
+      this.appendDummyInput()
+        .appendField("BAR STACKING")
+        .appendField(
+          new Blockly.FieldDropdown([
+            ["Auto", "auto"],
+            ["Overlay", "none"],
+            ["Stacked", "zero"],
+            ["Percentage", "normalize"],
+            ["Centered", "center"],
+          ]),
+          "STACK",
+        );
+      this.setPreviousStatement(true, "ChartAppearance");
+      this.setNextStatement(true, "ChartAppearance");
+      this.setColour("#aa7942");
+    },
+  };
   Blockly.Blocks.dcv_orientation = {
     init() {
       this.appendDummyInput()
@@ -211,7 +284,9 @@ function newBlock(
   return block;
 }
 export function addChartLayer(ws: Blockly.Workspace, layer: Layer) {
-  const group = newBlock(ws, "dcv_layer", layer.id);
+  const group = newBlock(ws, "dcv_layer", layer.id, {
+    TITLE: layer.label || "",
+  });
   // Store unmapped settings for duplicated layers; connected fields remain authoritative.
   group.data = JSON.stringify(layer);
   const stat = newBlock(ws, "dcv_statistics", undefined, {
@@ -232,6 +307,8 @@ export function addChartLayer(ws: Blockly.Workspace, layer: Layer) {
     previous.nextConnection!.connect(b.previousConnection!);
     previous = b;
   };
+  if (canOrient(layer.mark) && layer.stack)
+    append("dcv_stack", { STACK: layer.stack });
   if (canOrient(layer.mark))
     append("dcv_orientation", { ORIENTATION: layer.orientation || "vertical" });
   if (
@@ -257,6 +334,27 @@ export function buildChartWorkspace(ws: Blockly.Workspace, ctx: Context) {
     RECIPE: ctx.chart.inputRecipeId,
   });
   let previous = root;
+  for (const group of styleGroups) {
+    if (
+      !group.fields.some((f) => ctx.chart.style?.[f.key] !== undefined) &&
+      !(group.id === "facets" && (ctx.chart.facetRow || ctx.chart.facetColumn))
+    )
+      continue;
+    const fields: Record<string, string> = {};
+    for (const field of group.fields) {
+      const value =
+        ctx.chart.style?.[field.key] ?? fieldDefault(ctx.chart, field);
+      fields[field.key] =
+        field.type === "boolean" ? (value ? "TRUE" : "FALSE") : String(value);
+    }
+    if (group.id === "facets") {
+      fields.ROW = ctx.chart.facetRow || "";
+      fields.COLUMN = ctx.chart.facetColumn || "";
+    }
+    const block = newBlock(ws, "dcv_style_" + group.id, undefined, fields);
+    previous.nextConnection!.connect(block.previousConnection!);
+    previous = block;
+  }
   for (const layer of ctx.chart.layers) {
     const block = addChartLayer(ws, layer);
     previous.nextConnection!.connect(block.previousConnection!);
@@ -272,8 +370,39 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
     );
   const root = roots[0];
   const layers: Layer[] = [];
+  const style: ChartStyle = {};
+  let facetRow: string | undefined, facetColumn: string | undefined;
+  const styleSeen = new Set<string>();
   let group = root.getNextBlock();
   while (group) {
+    if (group.type.startsWith("dcv_style_")) {
+      const definition = styleGroups.find(
+        (g) => "dcv_style_" + g.id === group!.type,
+      )!;
+      if (styleSeen.has(definition.id))
+        fail("Use only one " + definition.label + " block per chart.");
+      styleSeen.add(definition.id);
+      const oldGroup =
+        definition.fields.some((f) => chart.style?.[f.key] !== undefined) ||
+        (definition.id === "facets" && !!(chart.facetRow || chart.facetColumn));
+      for (const field of definition.fields) {
+        const raw = group.getFieldValue(field.key);
+        const value = parseStyleField(field, raw);
+        const defaultValue = parseStyleField(field, fieldDefault(chart, field));
+        (style as any)[field.key] =
+          oldGroup &&
+          chart.style?.[field.key] === undefined &&
+          value === defaultValue
+            ? undefined
+            : value;
+      }
+      if (definition.id === "facets") {
+        facetRow = group.getFieldValue("ROW") || undefined;
+        facetColumn = group.getFieldValue("COLUMN") || undefined;
+      }
+      group = group.getNextBlock();
+      continue;
+    }
     if (group.type !== "dcv_layer") fail("Expected a layer block.");
     let layerId = group.id;
     if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,99}$/.test(layerId)) {
@@ -311,6 +440,7 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
     const layer: Layer = {
       ...saved,
       id: layerId,
+      label: group.getFieldValue("TITLE") || undefined,
       mark,
       x: draw!.getFieldValue("X") || undefined,
       y: draw!.getFieldValue("Y") || undefined,
@@ -329,7 +459,10 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
       layer.constant =
         constant === 0 && saved.constant === undefined ? undefined : constant;
     }
-    if (canOrient(mark)) layer.orientation = undefined;
+    if (canOrient(mark)) {
+      layer.orientation = undefined;
+      layer.stack = undefined;
+    }
     if (isPieMark(mark)) layer.showPercent = false;
     if (!isPieMark(mark) && mark !== "choropleth" && mark !== "rule")
       for (const k of ["color", "size", "shape", "detail"] as const)
@@ -351,6 +484,13 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
             : saved.orientation === "vertical"
               ? "vertical"
               : undefined;
+      } else if (b.type === "dcv_stack") {
+        if (!canOrient(mark))
+          fail("Stacking applies to bars, counts and histograms.");
+        layer.stack =
+          b.getFieldValue("STACK") === "auto"
+            ? undefined
+            : b.getFieldValue("STACK");
       } else if (b.type === "dcv_labels") {
         if (!isPieMark(mark))
           fail("Percentage labels apply to pie and donut charts.");
@@ -388,6 +528,11 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
     ...chart,
     inputRecipeId: root.getFieldValue("RECIPE"),
     layers,
+    style: Object.values(style).some((v) => v !== undefined)
+      ? chartStyleSchema.parse(style)
+      : undefined,
+    facetRow,
+    facetColumn,
     ...(mapping ? { map: chart.map || defaultMap() } : {}),
     ...(mapping || circular
       ? { facetRow: undefined, facetColumn: undefined }

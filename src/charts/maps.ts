@@ -56,6 +56,8 @@ export async function resolveMap(
       : m.attribution ||
         `Custom boundaries: ${m.boundaryName || "GeoJSON"} (attribution not supplied)`;
   const street = m.tiles === "openstreetmap";
+  const width = chart.style?.width || 560,
+    height = chart.style?.height || 340;
   const notes = [
     attribution,
     "Coordinates use WGS84 longitude/latitude degrees. Map view and zoom can clip geography; reset the view to see the world.",
@@ -75,7 +77,7 @@ export async function resolveMap(
         strokeWidth: 0.5,
       },
     },
-    ...visibleTiles(m),
+    ...visibleTiles(m, width, height),
     {
       data: { values: features.map((f) => ({ _geometry: f.geometry })) },
       mark: {
@@ -365,8 +367,8 @@ export async function resolveMap(
     notes,
     spec: {
       $schema: "https://vega.github.io/schema/vega-lite/v6.json",
-      width: 560,
-      height: 340,
+      width,
+      height,
       title: {
         text: chart.name,
         subtitle: [
@@ -383,12 +385,12 @@ export async function resolveMap(
       projection: {
         type: m.projection,
         scale: (m.projection === "equalEarth" ? 100 : 85) * m.zoom,
-        translate: [280, 170],
+        translate: [width / 2, height / 2],
         center: [0, m.centerLatitude],
         rotate: [-m.centerLongitude, 0, 0],
         clipExtent: [
           [0, 0],
-          [560, 340],
+          [width, height],
         ],
       },
       layer: layers,

@@ -18,9 +18,19 @@ The six synthetic, CC0 examples cover bike availability on a street map, tree-co
 
 Bar charts, counts, and histograms have an **Orientation** control for vertical or horizontal views. The same values, bins, omissions, and contributing records appear in either orientation. Axis titles, domains, and scale settings follow their authored fields: X is the category/bin axis and Y is the value/count axis, even when horizontal rendering swaps their screen positions.
 
-Open **Chart blocks** in the chart studio to edit **From recipe → Statistics → Draw → Appearance**. Choose counts, bins, or an explicit aggregation in Statistics; select the chart family and fields in Draw; add orientation, field encodings, or pie/donut percentage labels afterward. Counts and bins require only the first field. Connected layer blocks draw from back to front and can be reordered, duplicated, or deleted. Appearance blocks set named properties, so their order within a layer does not change the result. Facets, scales, map boundaries, captions, and other advanced settings remain in the synchronized controls.
+Open **Chart blocks** in the chart studio to edit **From recipe → Statistics → Draw → Appearance**. Choose counts, bins, or an explicit aggregation in Statistics; select the chart family and fields in Draw; add orientation, field encodings, or pie/donut percentage labels afterward. Counts and bins require only the first field. Connected layer blocks draw from back to front and can be reordered, duplicated, or deleted. Appearance blocks set named properties, so their order within a layer does not change the result. Facets also have a chart block; scales, map boundaries, captions, and other advanced settings remain in the synchronized controls.
 
 Blocks and controls edit one chart definition. Disconnected, duplicate, or incompatible blocks display an explanation and leave the last complete chart intact; **Reset blocks to saved chart** discards that incomplete block arrangement. Use the app’s Undo/Redo for committed edits. Completed chart semantics survive portable projects, reports, image exports, and browser/headless execution; temporary block positions are not saved.
+
+## Layout, styling, subplots, and stacking
+
+Open **Layout & styling** for chart themes, background, fonts, categorical and continuous palettes, legend placement, axes, grid lines, label angles, drawing-area dimensions, and padding. These settings also have **Layout**, **Theme & colors**, **Typography**, **Legend**, **Axes & grids**, and **Facets** blocks, available under **Add layout & style blocks**. Blocks and controls stay synchronized.
+
+Use **Layer arrangement → Overlay** to draw layers together, or **Subplots** to give each Cartesian layer its own panel. Set a label on each layer, choose the grid’s column count and spacing, and choose shared or independent X/Y scales. Panels share the chart’s input recipe but can use different fields, statistics, and chart families. Subplot grids currently support Cartesian charts; maps and pies can be separate charts in a report. Facets support row/column grouping, spacing, independent scales, and wrapping a single column facet into a chosen number of columns.
+
+For bars, counts, and histograms, **Bar stacking** offers automatic, unstacked overlay, stacked, percentage-stacked, and centered modes. A color field defines stacked groups. Stacking works in both orientations and requires a linear value axis. Percentage stacking normalizes within each category/bin; tooltips and statistical tables retain the original values and exact contributors. A **Stack** appearance block exposes the same setting.
+
+Styles apply to the plot, reports, SVG/PNG exports, portable projects, and the headless runner. Width and height describe each drawing area or facet cell; exported dimensions also include labels, titles, legends, and padding. Font choices use system fonts without external downloads. This adds common figure controls, not arbitrary Matplotlib/Python styling or statistical models.
 
 ## Pie and donut charts
 

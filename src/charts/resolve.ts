@@ -1,3 +1,5 @@
+import { chartStyleSchema } from "../domain/chartStyle";
+import { applyChartStyle } from "./style";
 import { isPieMark, canOrient } from "../domain/charts";
 import { resolvePie } from "./pies";
 import { isMapMark } from "../domain/geography";
@@ -14,7 +16,7 @@ export interface ResolvedChart {
   notes: string[];
   authored: Chart;
 }
-export async function resolveChart(
+async function resolveUnstyledChart(
   engine: Engine,
   chart: Chart,
 ): Promise<ResolvedChart> {
@@ -24,6 +26,7 @@ export async function resolveChart(
     return resolveMap(engine, chart);
   const input = engine.relations.get(chart.inputRecipeId);
   if (!input) throw new CanvasError("BLOCKED", "Run the chart’s recipe first.");
+  const panels: Record<string, any>[][] = [];
   const tables: TableResult[] = [],
     layers: Record<string, any>[] = [],
     notes: string[] = [];
@@ -74,6 +77,7 @@ export async function resolveChart(
       : {}),
   });
   for (const [index, layer] of chart.layers.entries()) {
+    const firstMark = layers.length;
     if (layer.mark === "rule") {
       layers.push({
         mark: {
@@ -83,6 +87,7 @@ export async function resolveChart(
         },
         encoding: { y: { datum: layer.constant ?? 0, type: "quantitative" } },
       });
+      panels.push(layers.slice(firstMark));
       continue;
     }
     if (!layer.x) throw new CanvasError("VALIDATION", "Choose an x field.");
@@ -296,6 +301,7 @@ export async function resolveChart(
             ? "rect"
             : "bar";
     const brushable =
+      chart.style?.arrangement !== "subplots" &&
       index === 0 &&
       chart.layers.length === 1 &&
       ["scatter", "line"].includes(layer.mark) &&
@@ -307,6 +313,26 @@ export async function resolveChart(
         value: 0.2,
       };
     if (canOrient(layer.mark)) {
+      if (layer.stack !== undefined) {
+        if (layer.stack !== "none" && !layer.color)
+          throw new CanvasError(
+            "VALIDATION",
+            "Choose a color field to define the stacked groups.",
+          );
+        if (layer.stack !== "none" && chart.scales.yLog)
+          throw new CanvasError(
+            "VALIDATION",
+            "Stacked bars require a linear value axis.",
+          );
+        encoding.y.stack = layer.stack === "none" ? null : layer.stack;
+        if (layer.stack === "normalize") {
+          encoding.y.axis = { ...encoding.y.axis, format: ".0%" };
+          encoding.y.title = "Share of total";
+          notes.push(
+            "Percentage stacking normalizes within each category/bin; statistical tables and tooltips retain the original values.",
+          );
+        }
+      }
       // x/y remain the authored field roles. Orientation only changes geometry.
       for (const axis of ["x", "y"] as const) {
         const e = encoding[axis];
@@ -393,6 +419,7 @@ export async function resolveChart(
         },
       );
     }
+    panels.push(layers.slice(firstMark));
   }
   const spec: Record<string, any> = {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
@@ -454,6 +481,35 @@ export async function resolveChart(
     };
     spec.spec = { width: 240, height: 210, layer: layers };
   }
+  if (chart.style?.arrangement === "subplots") {
+    const children = panels.map((marks, i) => ({
+      title:
+        chart.layers[i].label || `Layer ${i + 1} · ${chart.layers[i].mark}`,
+      ...(spec.facet
+        ? {
+            data: spec.data,
+            facet: spec.facet,
+            spec: { ...spec.spec, layer: marks },
+          }
+        : { width: spec.width, height: spec.height, layer: marks }),
+    }));
+    delete spec.layer;
+    delete spec.facet;
+    delete spec.spec;
+    delete spec.data;
+    delete spec.width;
+    delete spec.height;
+    spec.concat = children;
+    spec.columns = chart.style.panelColumns || 2;
+    spec.spacing = chart.style.panelSpacing ?? 24;
+    spec.resolve = {
+      scale: {
+        x: chart.style.xScales || "independent",
+        y: chart.style.yScales || "independent",
+        color: "independent",
+      },
+    };
+  }
   return {
     id: chart.id,
     name: chart.name,
@@ -463,4 +519,21 @@ export async function resolveChart(
     notes,
     authored: chart,
   };
+}
+
+export async function resolveChart(
+  engine: Engine,
+  chart: Chart,
+): Promise<ResolvedChart> {
+  if (chart.style) chartStyleSchema.parse(chart.style);
+  if (
+    chart.style?.arrangement === "subplots" &&
+    chart.layers.some((l) => isMapMark(l.mark) || isPieMark(l.mark))
+  )
+    throw new CanvasError(
+      "VALIDATION",
+      "Subplot grids currently support Cartesian chart layers. Use separate report charts for maps and pies.",
+    );
+  const resolved = await resolveUnstyledChart(engine, chart);
+  return { ...resolved, spec: applyChartStyle(chart, resolved.spec) };
 }
