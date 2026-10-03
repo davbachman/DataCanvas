@@ -1,3 +1,4 @@
+import { horizontalFixture } from "../fixtures/horizontal";
 import { pieFixture } from "../fixtures/pies";
 import { packBundle } from "../../src/persistence/bundle";
 import { compareTables } from "../../src/engine/queries";
@@ -12,6 +13,7 @@ for (const name of [
   "bikes",
   "trees",
   "pies",
+  "horizontal",
 ]) {
   test(`browser/headless semantic parity: ${name}`, async ({ page }) => {
     await page.goto("./");
@@ -22,7 +24,12 @@ for (const name of [
       name === "adversarial"
         ? "tests/fixtures/adversarial.datacanvas"
         : `public/examples/${name}.datacanvas`;
-    const bundle = name === "pies" ? await pieFixture() : await load(path);
+    const bundle =
+      name === "pies"
+        ? await pieFixture()
+        : name === "horizontal"
+          ? await horizontalFixture()
+          : await load(path);
     const bytes = Array.from(packBundle(bundle));
     const native = await run(bundle);
     const browser = await page.evaluate(async (data) => {

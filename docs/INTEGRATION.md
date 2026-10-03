@@ -73,3 +73,9 @@ The production application exposes `window.DataCanvas` with `apiVersion: 1`, `lo
 Browser/headless parity fixtures run the actual Wasm and native DuckDB **1.5.4** engines against the same exported examples. They compare schemas, typed values with duplicate multiplicity, counts, authored encodings, and computed chart tables. Additional unit fixtures cover nulls, empty/all-missing groups, quote-containing names, wide-pivot drift, corrections, malformed records, deterministic sampling, and large integers.
 
 The public API returns computational outputs and quality diagnostics only. It contains no scores, rubrics, assignments, hidden solutions, submission systems, LMS integration, or external-adapter implementation.
+
+## Chart sequences and orientation
+
+Chart sequence blocks compile directly to the existing `Chart` / `Layer` model; no Blockly runtime or workspace serialization is required by API callers. Connected layer order is the order of `chart.layers`. Statistics are represented by the mark (`count`, `histogram`, `box`) or `layer.aggregate`; field mappings, bin width, and percentage labels use the existing layer properties. Advanced chart properties are preserved when the block editor changes a layer.
+
+For `bar`, `count`, and `histogram` layers, `orientation` accepts `"vertical"` (the default when absent) or `"horizontal"`. The resolved Vega-Lite encoding swaps screen axes and interval endpoints for horizontal layers while leaving statistical tables, authored field IDs, omission policy, and lineage unchanged. Authored X/Y scale settings follow their field roles rather than screen positions. Clients should preserve this optional field when saving a project.

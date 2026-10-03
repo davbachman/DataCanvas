@@ -1,4 +1,5 @@
-import { isPieMark } from "../domain/charts";
+import { ChartBlocks } from "./ChartBlocks";
+import { isPieMark, canOrient } from "../domain/charts";
 import { mapNavigation } from "./mapNavigation";
 import { exportSVG, renderedImages } from "./imageExport";
 import type { MapSettings } from "../domain/geography";
@@ -240,7 +241,12 @@ export function ChartView({
             <h2>{chart.name}</h2>
           </div>
           <div className="segmented">
-            {["Plot", "Statistical tables", "Specification"].map((t) => (
+            {[
+              "Plot",
+              "Chart blocks",
+              "Statistical tables",
+              "Specification",
+            ].map((t) => (
               <button
                 className={tab === t ? "active" : ""}
                 key={t}
@@ -251,13 +257,21 @@ export function ChartView({
             ))}
           </div>
         </div>
+        {tab === "Chart blocks" && (
+          <ChartBlocks
+            chart={chart}
+            columns={columns}
+            recipes={project.recipes}
+            onChange={onChange}
+          />
+        )}
         {busy && (
           <p className="progress-text">
             Resolving chart from the complete table…
           </p>
         )}
         {error && <p className="error-box">{error}</p>}
-        {resolved && (
+        {resolved && tab !== "Chart blocks" && (
           <>
             {tab === "Plot" ? (
               <>
@@ -410,6 +424,17 @@ export function ChartView({
               ]}
               onChange={(v) => changeMark(i, v as Layer["mark"])}
             />
+            {canOrient(layer.mark) && (
+              <Select
+                label="Orientation"
+                value={layer.orientation || "vertical"}
+                options={[
+                  { value: "vertical", label: "Vertical" },
+                  { value: "horizontal", label: "Horizontal" },
+                ]}
+                onChange={(v) => setLayer(i, "orientation", v)}
+              />
+            )}
             {layer.mark === "rule" ? (
               <Text
                 label="Reference value"
@@ -427,7 +452,11 @@ export function ChartView({
                         ? "Region key column"
                         : isPieMark(layer.mark)
                           ? "Category"
-                          : "X encoding"
+                          : layer.mark === "histogram"
+                            ? "Binned field"
+                            : ["bar", "count"].includes(layer.mark)
+                              ? "Category / first field"
+                              : "X encoding"
                   }
                   value={layer.x || ""}
                   columns={columns}
@@ -446,7 +475,9 @@ export function ChartView({
                             ? "Map value"
                             : isPieMark(layer.mark)
                               ? "Slice value"
-                              : "Y encoding"
+                              : layer.mark === "bar"
+                                ? "Value"
+                                : "Y encoding"
                       }
                       value={layer.y || ""}
                       columns={columns}
@@ -592,6 +623,15 @@ export function ChartView({
         {!mapping && !circular && (
           <details>
             <summary>Facets & scales</summary>
+            {chart.layers.some(
+              (l) => canOrient(l.mark) && l.orientation === "horizontal",
+            ) && (
+              <p>
+                Axis settings follow fields: authored X is the category/bin axis
+                (vertical on horizontal bars); authored Y is the value/count
+                axis (horizontal).
+              </p>
+            )}
             <ColumnSelect
               label="Facet rows"
               value={chart.facetRow || ""}

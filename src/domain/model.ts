@@ -93,6 +93,7 @@ export interface Layer {
   constantColor?: string;
   constantSize?: number;
   showPercent?: boolean;
+  orientation?: "vertical" | "horizontal";
 }
 export interface Chart {
   id: string;
@@ -277,6 +278,7 @@ export const projectSchema = z.object({
             binWidth: z.number().positive().optional(),
             constant: z.number().finite().optional(),
             showPercent: z.boolean().optional(),
+            orientation: z.enum(["vertical", "horizontal"]).optional(),
             constantSize: z.number().min(1).max(1000).optional(),
             constantColor: z
               .string()

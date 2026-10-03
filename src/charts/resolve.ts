@@ -1,4 +1,4 @@
-import { isPieMark } from "../domain/charts";
+import { isPieMark, canOrient } from "../domain/charts";
 import { resolvePie } from "./pies";
 import { isMapMark } from "../domain/geography";
 import { resolveMap } from "./maps";
@@ -306,6 +306,39 @@ export async function resolveChart(
         condition: { param: "brush", value: 0.85 },
         value: 0.2,
       };
+    if (canOrient(layer.mark)) {
+      // x/y remain the authored field roles. Orientation only changes geometry.
+      for (const axis of ["x", "y"] as const) {
+        const e = encoding[axis];
+        if (chart.scales[(axis + "Title") as "xTitle" | "yTitle"])
+          e.title = chart.scales[(axis + "Title") as "xTitle" | "yTitle"];
+        e.scale = {
+          ...e.scale,
+          ...(chart.scales[(axis + "Log") as "xLog" | "yLog"]
+            ? { type: "log" }
+            : {}),
+          ...(chart.scales[(axis + "Domain") as "xDomain" | "yDomain"]
+            ? {
+                domain:
+                  chart.scales[(axis + "Domain") as "xDomain" | "yDomain"],
+              }
+            : {}),
+          ...(axis === "y"
+            ? { zero: !chart.scales.yLog && chart.scales.zero !== false }
+            : {}),
+        };
+      }
+      if (layer.orientation === "horizontal") {
+        const { x, x2, y, y2, ...rest } = encoding;
+        encoding = {
+          ...rest,
+          x: y,
+          y: x,
+          ...(x2 ? { y2: x2 } : {}),
+          ...(y2 ? { x2: y2 } : {}),
+        };
+      }
+    }
     layers.push({
       ...(brushable
         ? {
@@ -320,6 +353,9 @@ export async function resolveChart(
       data: { values },
       mark: {
         type: mark,
+        ...(canOrient(layer.mark)
+          ? { orient: layer.orientation || "vertical" }
+          : {}),
         ...(mark === "line" ? { invalid: "break-paths-show-domains" } : {}),
         ...(mark === "point"
           ? { filled: true, size: layer.constantSize || 65, opacity: 0.75 }

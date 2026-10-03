@@ -14,6 +14,14 @@ A local-first visual workbench for cleaning, reshaping, combining, exploring, an
 
 The six synthetic, CC0 examples cover bike availability on a street map, tree-cover percentages in custom regions, geographic points and countries, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, your own GeoJSON boundaries, and optional OpenStreetMap street tiles with pan/zoom. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
 
+## Chart orientation and sequence blocks
+
+Bar charts, counts, and histograms have an **Orientation** control for vertical or horizontal views. The same values, bins, omissions, and contributing records appear in either orientation. Axis titles, domains, and scale settings follow their authored fields: X is the category/bin axis and Y is the value/count axis, even when horizontal rendering swaps their screen positions.
+
+Open **Chart blocks** in the chart studio to edit **From recipe → Statistics → Draw → Appearance**. Choose counts, bins, or an explicit aggregation in Statistics; select the chart family and fields in Draw; add orientation, field encodings, or pie/donut percentage labels afterward. Counts and bins require only the first field. Connected layer blocks draw from back to front and can be reordered, duplicated, or deleted. Appearance blocks set named properties, so their order within a layer does not change the result. Facets, scales, map boundaries, captions, and other advanced settings remain in the synchronized controls.
+
+Blocks and controls edit one chart definition. Disconnected, duplicate, or incompatible blocks display an explanation and leave the last complete chart intact; **Reset blocks to saved chart** discards that incomplete block arrangement. Use the app’s Undo/Redo for committed edits. Completed chart semantics survive portable projects, reports, image exports, and browser/headless execution; temporary block positions are not saved.
+
 ## Pie and donut charts
 
 In the chart studio, choose **Pie** or **Donut**, select a **Category**, then choose explicit numeric values, **count**, or **sum** under **Visible statistical transformation**. Explicit values require one record per category; count needs no value column. Click a slice to inspect its source records or create a category filter. Percentages, values, and record counts are also available in tooltips and **Statistical tables**. Percentage labels can be switched off.
