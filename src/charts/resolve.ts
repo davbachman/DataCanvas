@@ -1,3 +1,5 @@
+import { isPieMark } from "../domain/charts";
+import { resolvePie } from "./pies";
 import { isMapMark } from "../domain/geography";
 import { resolveMap } from "./maps";
 import { type Chart, type Layer, CanvasError, column } from "../domain/model";
@@ -16,6 +18,8 @@ export async function resolveChart(
   engine: Engine,
   chart: Chart,
 ): Promise<ResolvedChart> {
+  if (chart.layers.some((l) => isPieMark(l.mark)))
+    return resolvePie(engine, chart);
   if (chart.layers.some((l) => isMapMark(l.mark)))
     return resolveMap(engine, chart);
   const input = engine.relations.get(chart.inputRecipeId);

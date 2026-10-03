@@ -14,6 +14,12 @@ A local-first visual workbench for cleaning, reshaping, combining, exploring, an
 
 The six synthetic, CC0 examples cover bike availability on a street map, tree-cover percentages in custom regions, geographic points and countries, messy temperatures, transaction/catalog joins, and unequal group sizes. Built-in maps support projected points, country choropleths, your own GeoJSON boundaries, and optional OpenStreetMap street tiles with pan/zoom. Source files stay in the project. Recovery is automatic in IndexedDB; a downloaded project is a separate backup.
 
+## Pie and donut charts
+
+In the chart studio, choose **Pie** or **Donut**, select a **Category**, then choose explicit numeric values, **count**, or **sum** under **Visible statistical transformation**. Explicit values require one record per category; count needs no value column. Click a slice to inspect its source records or create a category filter. Percentages, values, and record counts are also available in tooltips and **Statistical tables**. Percentage labels can be switched off.
+
+Slices require nonnegative finite values and a positive total. Missing categories or values are omitted with a visible count; zero-value categories remain in the table. Labels below 3% are omitted to reduce overlap, with percentages still available in tooltips. Each pie or donut supports one layer, no facets, and at most 50 categories; use a bar chart or explicitly group categories for larger comparisons. Charts work in reports, SVG/PNG exports, saved projects, and the headless runner.
+
 ## Development
 
 Requires Node.js 24 and npm. Dependencies and compatible DuckDB engine versions are pinned in the lockfile.

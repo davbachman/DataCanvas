@@ -1,6 +1,7 @@
+import { pieFixture } from "../fixtures/pies";
+import { packBundle } from "../../src/persistence/bundle";
 import { compareTables } from "../../src/engine/queries";
 import { test, expect } from "@playwright/test";
-import { readFile } from "node:fs/promises";
 import { load, run } from "../../src/headless/api";
 for (const name of [
   "temperatures",
@@ -10,6 +11,7 @@ for (const name of [
   "mapping",
   "bikes",
   "trees",
+  "pies",
 ]) {
   test(`browser/headless semantic parity: ${name}`, async ({ page }) => {
     await page.goto("./");
@@ -20,8 +22,9 @@ for (const name of [
       name === "adversarial"
         ? "tests/fixtures/adversarial.datacanvas"
         : `public/examples/${name}.datacanvas`;
-    const bytes = Array.from(await readFile(path));
-    const native = await run(await load(path));
+    const bundle = name === "pies" ? await pieFixture() : await load(path);
+    const bytes = Array.from(packBundle(bundle));
+    const native = await run(bundle);
     const browser = await page.evaluate(async (data) => {
       const bundle = window.DataCanvas.load(new Uint8Array(data));
       return window.DataCanvas.run(bundle, {

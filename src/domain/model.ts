@@ -76,7 +76,9 @@ export interface Layer {
     | "heatmap"
     | "rule"
     | "map_points"
-    | "choropleth";
+    | "choropleth"
+    | "pie"
+    | "donut";
   x?: string;
   x2?: string;
   y?: string;
@@ -90,6 +92,7 @@ export interface Layer {
   constant?: number;
   constantColor?: string;
   constantSize?: number;
+  showPercent?: boolean;
 }
 export interface Chart {
   id: string;
@@ -259,6 +262,8 @@ export const projectSchema = z.object({
               "rule",
               "map_points",
               "choropleth",
+              "pie",
+              "donut",
             ]),
             x: z.string().optional(),
             x2: z.string().optional(),
@@ -271,6 +276,7 @@ export const projectSchema = z.object({
             aggregate: z.string().optional(),
             binWidth: z.number().positive().optional(),
             constant: z.number().finite().optional(),
+            showPercent: z.boolean().optional(),
             constantSize: z.number().min(1).max(1000).optional(),
             constantColor: z
               .string()

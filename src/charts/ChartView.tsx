@@ -1,3 +1,4 @@
+import { isPieMark } from "../domain/charts";
 import { mapNavigation } from "./mapNavigation";
 import { exportSVG, renderedImages } from "./imageExport";
 import type { MapSettings } from "../domain/geography";
@@ -188,6 +189,7 @@ export function ChartView({
         i === index ? { ...l, [key]: value } : l,
       ),
     });
+  const circular = chart.layers.some((l) => isPieMark(l.mark));
   const mapping = chart.layers.some((l) => isMapMark(l.mark));
   const changeMark = (index: number, mark: Layer["mark"]) => {
     const previous = chart.layers[index];
@@ -198,6 +200,16 @@ export function ChartView({
     const next: Layer = {
       ...previous,
       mark,
+      ...(isPieMark(mark)
+        ? {
+            aggregate:
+              previous.mark === "count"
+                ? "count"
+                : ["count", "sum"].includes(previous.aggregate || "")
+                  ? previous.aggregate
+                  : undefined,
+          }
+        : {}),
       ...(mark === "map_points"
         ? { x: longitude || previous.x, y: latitude || previous.y }
         : {}),
@@ -205,6 +217,9 @@ export function ChartView({
     onChange({
       ...chart,
       layers: chart.layers.map((l, i) => (i === index ? next : l)),
+      ...(isPieMark(mark)
+        ? { facetRow: undefined, facetColumn: undefined }
+        : {}),
       ...(isMapMark(mark)
         ? {
             map: chart.map || defaultMap(),
@@ -280,7 +295,9 @@ export function ChartView({
                   <span>
                     {mapping
                       ? "Click a point or filled region to inspect contributors. Drag to pan; scroll to zoom. Arrow and plus/minus keys also work when the map is focused."
-                      : "Click a mark to inspect contributors. Drag in a scatter/line plot to brush."}
+                      : circular
+                        ? "Click a slice to inspect contributors or create a category filter."
+                        : "Click a mark to inspect contributors. Drag in a scatter/line plot to brush."}
                   </span>
                   <div className="inline">
                     <button
@@ -386,6 +403,8 @@ export function ChartView({
                 "box",
                 "heatmap",
                 "rule",
+                { value: "pie", label: "Pie" },
+                { value: "donut", label: "Donut" },
                 { value: "map_points", label: "Point map" },
                 { value: "choropleth", label: "Choropleth map" },
               ]}
@@ -406,7 +425,9 @@ export function ChartView({
                       ? "Longitude"
                       : layer.mark === "choropleth"
                         ? "Region key column"
-                        : "X encoding"
+                        : isPieMark(layer.mark)
+                          ? "Category"
+                          : "X encoding"
                   }
                   value={layer.x || ""}
                   columns={columns}
@@ -414,7 +435,8 @@ export function ChartView({
                 />
                 {!["count", "histogram"].includes(layer.mark) &&
                   !(
-                    layer.mark === "choropleth" && layer.aggregate === "count"
+                    (layer.mark === "choropleth" || isPieMark(layer.mark)) &&
+                    layer.aggregate === "count"
                   ) && (
                     <ColumnSelect
                       label={
@@ -422,14 +444,16 @@ export function ChartView({
                           ? "Latitude"
                           : layer.mark === "choropleth"
                             ? "Map value"
-                            : "Y encoding"
+                            : isPieMark(layer.mark)
+                              ? "Slice value"
+                              : "Y encoding"
                       }
                       value={layer.y || ""}
                       columns={columns}
                       onChange={(v) => setLayer(i, "y", v)}
                     />
                   )}
-                {layer.mark !== "choropleth" && (
+                {layer.mark !== "choropleth" && !isPieMark(layer.mark) && (
                   <ColumnSelect
                     label="Color field"
                     value={layer.color || ""}
@@ -438,28 +462,30 @@ export function ChartView({
                     onChange={(v) => setLayer(i, "color", v || undefined)}
                   />
                 )}
-                <details>
-                  <summary>More encodings</summary>
-                  <Multi
-                    label="Tooltip fields"
-                    columns={columns}
-                    value={layer.tooltip || columns.map((c) => c.id)}
-                    onChange={(v) => setLayer(i, "tooltip", v)}
-                  />
-                  {(layer.mark === "choropleth"
-                    ? []
-                    : (["size", "shape", "detail"] as const)
-                  ).map((k) => (
-                    <ColumnSelect
-                      key={k}
-                      label={`${k} field`}
-                      value={layer[k] || ""}
+                {!isPieMark(layer.mark) && (
+                  <details>
+                    <summary>More encodings</summary>
+                    <Multi
+                      label="Tooltip fields"
                       columns={columns}
-                      optional
-                      onChange={(v) => setLayer(i, k, v || undefined)}
+                      value={layer.tooltip || columns.map((c) => c.id)}
+                      onChange={(v) => setLayer(i, "tooltip", v)}
                     />
-                  ))}
-                </details>
+                    {(layer.mark === "choropleth"
+                      ? []
+                      : (["size", "shape", "detail"] as const)
+                    ).map((k) => (
+                      <ColumnSelect
+                        key={k}
+                        label={`${k} field`}
+                        value={layer[k] || ""}
+                        columns={columns}
+                        optional
+                        onChange={(v) => setLayer(i, k, v || undefined)}
+                      />
+                    ))}
+                  </details>
+                )}
                 {layer.mark === "histogram" && (
                   <Text
                     label="Bin width · [start, end)"
@@ -468,7 +494,9 @@ export function ChartView({
                     onChange={(v) => setLayer(i, "binWidth", v)}
                   />
                 )}{" "}
-                {["bar", "heatmap", "choropleth"].includes(layer.mark) && (
+                {["bar", "heatmap", "choropleth", "pie", "donut"].includes(
+                  layer.mark,
+                ) && (
                   <Select
                     label="Visible statistical transformation"
                     value={layer.aggregate || ""}
@@ -476,28 +504,40 @@ export function ChartView({
                       { value: "", label: "Explicit values (no aggregation)" },
                       "count",
                       "sum",
-                      "mean",
-                      "median",
-                      "min",
-                      "max",
+                      ...(!isPieMark(layer.mark)
+                        ? ["mean", "median", "min", "max"]
+                        : []),
                     ]}
                     onChange={(v) => setLayer(i, "aggregate", v || undefined)}
                   />
                 )}
               </>
             )}
-            <Text
-              label="Constant color (when unmapped)"
-              type="color"
-              value={layer.constantColor || "#277c6c"}
-              onChange={(v) => setLayer(i, "constantColor", v)}
-            />
-            <Text
-              label="Constant mark size (when unmapped)"
-              type="number"
-              value={layer.constantSize || 65}
-              onChange={(v) => setLayer(i, "constantSize", v)}
-            />
+            {isPieMark(layer.mark) ? (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={layer.showPercent !== false}
+                  onChange={(e) => setLayer(i, "showPercent", e.target.checked)}
+                />
+                Show percentage labels
+              </label>
+            ) : (
+              <>
+                <Text
+                  label="Constant color (when unmapped)"
+                  type="color"
+                  value={layer.constantColor || "#277c6c"}
+                  onChange={(v) => setLayer(i, "constantColor", v)}
+                />
+                <Text
+                  label="Constant mark size (when unmapped)"
+                  type="number"
+                  value={layer.constantSize || 65}
+                  onChange={(v) => setLayer(i, "constantSize", v)}
+                />
+              </>
+            )}
             {chart.layers.length > 1 && (
               <button
                 onClick={() =>
@@ -512,33 +552,36 @@ export function ChartView({
             )}
           </fieldset>
         ))}
-        <button
-          onClick={() =>
-            onChange({
-              ...chart,
-              layers: [
-                ...chart.layers,
-                {
-                  id: uid("layer"),
-                  mark: mapping ? "map_points" : "rule",
-                  constant: 0,
-                  ...(mapping
-                    ? {
-                        x: columns.find((c) =>
-                          /^(lon|lng|longitude)$/i.test(c.name),
-                        )?.id,
-                        y: columns.find((c) => /^(lat|latitude)$/i.test(c.name))
-                          ?.id,
-                      }
-                    : {}),
-                },
-              ],
-            })
-          }
-        >
-          <Plus size={14} />
-          Add layer
-        </button>
+        {!circular && (
+          <button
+            onClick={() =>
+              onChange({
+                ...chart,
+                layers: [
+                  ...chart.layers,
+                  {
+                    id: uid("layer"),
+                    mark: mapping ? "map_points" : "rule",
+                    constant: 0,
+                    ...(mapping
+                      ? {
+                          x: columns.find((c) =>
+                            /^(lon|lng|longitude)$/i.test(c.name),
+                          )?.id,
+                          y: columns.find((c) =>
+                            /^(lat|latitude)$/i.test(c.name),
+                          )?.id,
+                        }
+                      : {}),
+                  },
+                ],
+              })
+            }
+          >
+            <Plus size={14} />
+            Add layer
+          </button>
+        )}
         {mapping && (
           <MapControls
             chart={chart}
@@ -546,7 +589,7 @@ export function ChartView({
             spec={resolved?.spec}
           />
         )}
-        {!mapping && (
+        {!mapping && !circular && (
           <details>
             <summary>Facets & scales</summary>
             <ColumnSelect
@@ -618,7 +661,7 @@ export function ChartView({
             }
           />
         </Field>
-        {!mapping && (
+        {!mapping && !circular && (
           <button onClick={() => onExtract(chart)}>
             Extract transformation as recipe
           </button>

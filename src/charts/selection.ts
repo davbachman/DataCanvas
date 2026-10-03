@@ -22,7 +22,9 @@ export function markPredicate(
       ? { kind: "unary" as const, op: "is_missing", arg: col(id) }
       : binary("=", col(id), lit(value));
   const groups = [
-    ...(layer.mark === "choropleth" ? [] : [layer.color, layer.detail]),
+    ...(["choropleth", "pie", "donut"].includes(layer.mark)
+      ? []
+      : [layer.color, layer.detail]),
     chart.facetRow,
     chart.facetColumn,
   ].filter((x): x is string => !!x);
