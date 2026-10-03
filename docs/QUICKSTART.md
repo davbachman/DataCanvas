@@ -1,59 +1,49 @@
-# Working with Data Canvas
+# Getting started
 
-Data Canvas keeps the program and its data visible together. A **source** is an immutable file, a **recipe** produces a named table, and a **chart** refers to a recipe's current output.
+[Guide contents](../README.md#instructions-for-use) · [Open the app](https://davbachman.github.io/DataCanvas/)
 
-## Import and inspect
+Data Canvas runs in your browser. You do not need an account or a local installation. A **source** holds an imported file; a **recipe** turns a source or another recipe into a named table; a **chart** visualizes a recipe; a **report** brings evidence and written explanations together.
 
-Use **File → Import data** or the plus beside Project Library. Choose CSV, TSV, or `.xlsx`. Review the delimiter, quote character, header row, sheet, declared missing tokens, inferred types, and malformed-record policy before accepting.
+## Try an example
 
-The literal `NA` is ordinary text unless you explicitly declare it missing. A blank string, zero, missing token, and parsing failure are different. Leading-zero IDs stay text. Date/timestamp import types accept ISO formats; for other formats, import as Text and use Parse with an explicit format such as `%d/%m/%Y`. Timestamp interpretation is UTC.
+1. [Open the app](https://davbachman.github.io/DataCanvas/), then choose **File → Example projects** or the Data Canvas logo.
+2. Open **Messy temperatures**. Select **Clean monthly readings** in the Project Library.
+3. Choose **Run all outputs** (the circular-arrow button beside Run). Select operations in **Recipe list** to inspect their settings and the **Before** and **After** tables.
+4. Select **Regional temperatures**. Compare the mean, valid-reading count, and missing-reading count. Open **Checks** to see issues that a mean alone would conceal.
+5. Open a chart from the library and examine **Statistical tables**. Click a plotted mark to inspect contributing records.
+6. Open **Report** to read the analysis, then choose **File → Save portable project** to keep an editable copy.
 
-Malformed delimited rows are reported. Retain mode preserves extra fields in an overflow column and fills absent fields with missing. Exclude mode is an explicit saved policy. Formula cells use stored results; Data Canvas never executes spreadsheet macros, formulas, or external links.
+All six examples use synthetic, CC0 observations. They are teaching datasets, not current measurements.
 
-A source's inspector lets you change analytical roles, units, descriptions, and attribution independently of storage types. Replace a source through **Replace source with reviewed mapping**; every established column must be mapped once. Fingerprints detect changed files.
+| Example | What to explore |
+| --- | --- |
+| Messy temperatures | Parsing, missing values, reshaping, regional summaries, and metadata keys |
+| Transactions & products | Derived amounts, duplicate join keys, row multiplication, and unmatched products |
+| Unequal group sizes | The difference between observation-weighted and station-weighted means |
+| Places, points & regions | Longitude/latitude points and country choropleths with bundled boundaries |
+| Bikes around the harbor | Optional online street tiles, point size/color, availability percentages, and a filtered recipe |
+| Tree cover: totals vs. percentages | Custom GeoJSON, regional totals, explicit denominators, and missing coverage |
 
-## Build a recipe
+The [mapping guide](MAPPING.md) includes downloadable geographic projects and guided comparisons.
 
-Select a source and choose **Build a recipe**. Operations come from the searchable toolbox. In the block workspace, select a block to configure its settings; Boolean and value expression blocks fit typed sockets. In Recipe list, use insertion boundaries, move buttons, and delete controls. Both editors modify the same canonical recipe.
+## Start with your own data
 
-Select Configure to build nested arithmetic, conditions, AND/OR/NOT, text operations, pure functions, and missing checks. Add a note explaining why the change is appropriate. Unfinished operations can be saved as drafts; they block execution at that point without blocking saving.
+1. Choose **File → New project**, edit the project title, then **File → Import data**.
+2. Select a CSV, TSV, or XLSX file. Review missing tokens and inferred types before importing; record what one row represents.
+3. Select the source and choose **Build a recipe**. Give the recipe a useful name.
+4. Click **Filter rows** in the operation toolbox. In **Configure**, build a condition using a column, comparison operator, and literal value. For example, use a binary condition with `amount` on the left, `>` as the operator, and Number `0` on the right.
+5. Choose **Run**, select the filter, and compare **Before** and **After**. Check the false and missing-condition counts in **Checks**.
+6. Choose **Visualize table**. For a simple category frequency chart, select `count` and choose the category field. For a numeric distribution, select `histogram`, choose the binned field, and set a positive bin width.
+7. Save a portable project. Export a chart, table, or report when you need a presentation copy.
 
-Branch creates a new recipe referencing the selected recipe. **Extract prefix as recipe** moves the selected prefix into a shared named recipe and replaces it with a reference. Dependencies display sources, recipes, charts, and navigable table connections. Cycles are rejected.
+## Find your way around
 
-A join requires key pairs, relationship expectations, selected right-side columns, and explicit conflict aliases. Review the observed key multiplicities and exact projected output count. A 2-by-3 match produces six rows; Data Canvas does not hide or truncate that multiplication.
+The Project Library selects sources, recipes, and charts. The searchable toolbox adds operations. The main canvas offers synchronized **Blocks** and **Recipe list** editors. The inspector has **Configure**, **Explain**, **Checks**, and **SQL** tabs. The bottom drawer shows tables, profiles, changes, and contributors; drag its divider or maximize it for more room.
 
-## Run and reason
+Use **Dependencies** to follow relationships, **SQL workspace** to write queries, and **Report** to compose findings. At narrow widths, switch between **Project**, **Canvas**, and **Inspector**. Recipe list supplies insertion, movement, configuration, and deletion controls without dragging.
 
-Run computes the selected recipe and its dependencies. The adjacent circular-arrow control runs all outputs. Step resolves prerequisite recipes and advances one table transformation. Auto preview can be turned off for deliberate work. Cancel terminates the worker; your project remains saved.
+Table previews normally show up to 100 rows. Counts, profiles, chart statistics, and data exports use complete results. Save a downloaded project even if browser recovery is available.
 
-Choose Before/After, Column profiles, Changes, or Contributing records in the resizable bottom drawer. Counts and profiles use the full input; the ordinary table preview displays at most 100 rows. Click a row to see its contributing source records. The drawer can be maximized, and its resize handle supports arrow keys.
+---
 
-Explain describes an operation deterministically. Checks show advisory and required failures without hiding results. SQL shows the query mapped to the selected block. The SQL workspace accepts parsed, read-only SELECT/WITH statements over explicit bindings, executes them in a separate database, and compares row multisets with duplicates preserved.
-
-## Visualize and report
-
-Visualize table creates an editable chart. Choose scatter, line, explicit-value bar, count bar, histogram, box plot, or heat map. Add layers, reference rules, encodings, facets, and scales. Statistical transformations are explicit and available in the Statistical tables tab. Histogram intervals are `[start, end)` and anchored at zero. Box plots expose quartiles and whiskers.
-
-Click a mark for contributing records. Brush a single-layer scatter/line plot to highlight a range. **Create filter from selection** creates a separate recipe with an explicit range/category predicate; it never silently changes the chart's input. Basic chart transformations can be extracted as recipes. Export SVG, PNG, or the editable chart specification.
-
-Reports combine authored text, live charts, tables, and captions. Link prose to evidence; subsequent table edits mark linked claims for review. Export HTML for a self-contained document with embedded figures, source fingerprints, attributions, and operation summaries. Print that HTML to PDF in your browser.
-
-## Map locations and regions
-
-Choose **Point map** to plot numeric longitude/latitude, or **Choropleth map** to join region keys to boundaries and shade an explicit sum, mean, count, or other statistic. World countries are bundled; custom Polygon/MultiPolygon GeoJSON can be imported and travels with the project. Choose a projection, **Fit mapped data**, and inspect unmatched keys or omitted coordinates in the notes. Select **Basemap → Street map — OpenStreetMap (online)** for street detail, then drag/scroll or use keyboard controls to navigate. Adjust **Overlay opacity** to show streets underneath regions. Try **Bikes around the harbor** for street-map points or **Tree cover: totals vs. percentages** for custom choropleth regions; both open directly to their first map and include guided reports. Their observations are synthetic. **Places, points & regions** remains available as a smaller introduction. See the [mapping guide](MAPPING.md) for joins, coordinate rules, imports, and limits.
-
-## Preserve work
-
-IndexedDB recovery is automatic and distinct from downloading a portable `.datacanvas` ZIP. New/Open/example actions preserve the previous draft. Recover another draft from File. Undo/redo covers canonical edits. Source assets, drafts, expressions, notes, charts, reports, and saved queries travel in the project file.
-
-CSV exports omit hidden lineage and include a separate data dictionary. They do not automatically encode categories for machine learning. Missing CSV fields are unquoted empty values; literal blank strings are quoted. Use the project or typed execution results to retain complete type information.
-
-To continue an analysis in R or Python, choose **Run all outputs**, then **File → Export R / tidyverse + source assets** or **Export Python / pandas + source assets**. Extract the ZIP and follow its README to install dependencies and run `analysis.R` or `analysis.py`. Both require DuckDB: compatible steps use pandas or tidyverse, and the remaining steps use the original SQL. The script recreates every recipe and exports its tables. It includes full inputs rather than preview rows; chart code is not generated. See `coverage.json` for each step's backend and `outputs.json` for table names and types.
-
-Keyboard: Tab navigates controls, Enter activates them, Ctrl/⌘ S downloads a backup, Ctrl/⌘ Z undoes outside text fields, Shift-Ctrl/⌘ Z redoes, and Ctrl/⌘ Enter runs. Recipe list offers the complete authoring path without dragging. At narrow widths switch between Project, Canvas, and Inspector tabs.
-
-## Pattern-based text operations
-
-Choose **Regular expression** in the Clean toolbox to filter matching/nonmatching rows, replace text, or extract a capture into a new column. Test a sample in the inspector before running. See [patterns, flags, replacements, and missing-value rules](REGEX.md).
-
-To select **columns by their names**, add **Select columns**, choose **Select by → Regular expression**, enter a pattern such as `^sales_`, and choose **keep** or **drop**. Use **Preview matching columns** to inspect names before running.
+[Guide contents](../README.md#instructions-for-use) · Next: [Importing data and datetime values](IMPORTING.md)

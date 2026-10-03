@@ -1,5 +1,7 @@
 # Mapping geographic data
 
+[Guide contents](../README.md#instructions-for-use) · [Open the app](https://davbachman.github.io/DataCanvas/)
+
 Open the **Places, points & regions** example to explore a point map and a country choropleth. The default maps run locally with bundled boundaries. An optional OpenStreetMap street basemap adds online roads, buildings, and place labels without an API key.
 
 ## Editable map examples
@@ -60,3 +62,7 @@ Imported boundaries are embedded in the chart's saved project settings. Portable
 The bundled 177 country features come from **Natural Earth 4.1.0, 1:110m**, distributed by **world-atlas 2.0.2**. Natural Earth data is public domain; world-atlas is ISC licensed. The reproducible conversion is `node scripts/world-basemap.mjs`; it drops a degenerate quantized ring while retaining every country feature. The world-atlas license is shipped at `geography/LICENSE-world-atlas.txt`. Generalized boundaries reflect that dataset, are unsuitable for navigation or detailed local analysis, and do not express a position on legal or political status. Use custom boundaries for finer detail.
 
 Built-in map zoom ranges from 0.5 to 2,000; online street maps allow higher zoom for local detail. View settings may clip features; reset returns to the world view. There are no satellite/terrain basemaps, address geocoding, shapefile/TopoJSON imports, spatial joins, distance calculations, map facets, or rectangular map brushing. Cartesian and geographic layers require separate charts. Map statistical extraction into recipes is unavailable; use an explicit Summarize operation when a reusable region summary is needed.
+
+---
+
+Previous: [Layout and styling](LAYOUT.md) · [Guide contents](../README.md#instructions-for-use) · Next: [Reports](REPORTS.md)

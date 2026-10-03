@@ -1,5 +1,7 @@
 # Regular expressions
 
+[Guide contents](../README.md#instructions-for-use) · [Open the app](https://davbachman.github.io/DataCanvas/)
+
 Add **Clean → Regular expression** to a recipe and choose a column. The app and Linux runner both use the RE2 engine built into DuckDB 1.5.4. There is no JavaScript-regex fallback and no executable user code.
 
 - **Filter** retains rows containing a match. **Keep nonmatching rows** reverses that condition. Both modes exclude missing values; use a separate missing-value operation if needed.
@@ -32,3 +34,7 @@ Examples: `^sales_` matches names starting with `sales_`; `_2025$` matches names
 Names are evaluated against this step's input schema each time the recipe runs, so upstream renames or added columns can change the selection. Retained columns preserve their IDs, metadata, and input order. Rows and lineage are unchanged. If nothing matches, **keep** produces a table with zero visible columns and the original row count; **drop** retains all columns. Checks report the match count, retained count, and matched names. Invalid patterns fail even on empty inputs.
 
 The preview uses currently known input names; run pending upstream edits to refresh them. Explicit selection remains available and existing projects keep their original behavior. A regex selection is saved as **Select columns operation version 2**, so older releases that do not support it reject the project instead of silently executing a different selection. Pattern, action, case option, and version survive portable export/import and browser/headless execution.
+
+---
+
+Previous: [Operation reference](OPERATIONS.md) · [Guide contents](../README.md#instructions-for-use) · Next: [Charts](CHARTS.md)
