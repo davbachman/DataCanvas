@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "test:code-export": "tsx scripts/test-code-export.ts",
     "runner": "tsx src/headless/cli.ts",
     "benchmark": "tsx scripts/benchmark.ts"
   },

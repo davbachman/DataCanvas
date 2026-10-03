@@ -38,6 +38,14 @@ In the chart studio, choose **Pie** or **Donut**, select a **Category**, then ch
 
 Slices require nonnegative finite values and a positive total. Missing categories or values are omitted with a visible count; zero-value categories remain in the table. Labels below 3% are omitted to reduce overlap, with percentages still available in tooltips. Each pie or donut supports one layer, no facets, and at most 50 categories; use a bar chart or explicitly group categories for larger comparisons. Charts work in reports, SVG/PNG exports, saved projects, and the headless runner.
 
+## Export R or Python analysis code
+
+After **Run all outputs**, use **File → Export R / tidyverse + source assets** or **Export Python / pandas + source assets**. Each ZIP contains a runnable script, dependency setup, the complete typed source data, original source files, project metadata, and a README. Running the script recreates all recipes in dependency order, exposes their results as pandas DataFrames or R tibbles, and writes CSV files to `results/`.
+
+These exports require **DuckDB 1.5.4**. Compatible operations use pandas directly or dplyr/dbplyr on DuckDB; other steps retain the compiled DuckDB SQL to preserve RE2 patterns, missing-value rules, sampling, joins, reshaping, and statistics. Each step identifies its backend, with a complete list in `coverage.json`. This is not a DuckDB-free translation. Stable column IDs keep references intact; `outputs.json` maps them to display names and types.
+
+Exports reproduce the saved inputs and schema. Re-export after changing sources or dynamic pivot categories. Saved check findings are included; compiler-time checks and guards are not rerun after manual script edits. Chart/report layouts and SQL-workspace queries remain in the project metadata but are not translated into plotting or query code. Stale, partial, and failed recipe runs cannot be exported.
+
 ## Development
 
 Requires Node.js 24 and npm. Dependencies and compatible DuckDB engine versions are pinned in the lockfile.
@@ -59,6 +67,8 @@ npm run test:browser
 ```
 
 Browser tests use `/usr/bin/chromium` when present, `CHROMIUM_PATH` when supplied, or Playwright's installed Chromium. On a fresh machine run `npx playwright install --with-deps chromium`. CI also installs Firefox and WebKit and runs all three engines with `CROSS_BROWSER=1 npm run test:browser`.
+
+`npm run test:code-export` executes the generated Python and R scripts for all six examples and an edge-case fixture, comparing every output table with the engine (including integer precision and missing values). Install the runtimes using `scripts/code-export-environment.yml` with Conda, or provide equivalent runtimes through `PYTHON` and `RSCRIPT`. This runs as a separate required deployment job.
 
 ## Headless analysis
 

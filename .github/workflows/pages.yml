@@ -11,6 +11,24 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  code-exports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: datacanvas-exports
+          environment-file: scripts/code-export-environment.yml
+          auto-activate-base: false
+      - name: Execute generated Python and R scripts and compare full results
+        shell: bash -el {0}
+        run: npm run test:code-export
   build:
     outputs:
       entry: ${{ steps.assets.outputs.entry }}
@@ -56,7 +74,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, code-exports]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

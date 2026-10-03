@@ -1,0 +1,17 @@
+name: datacanvas-exports
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pandas>=2.2,<4
+  - r-base>=4.1
+  - r-duckdb=1.5.4.3
+  - r-dbi
+  - r-dplyr
+  - r-dbplyr
+  - r-jsonlite
+  - r-tibble
+  - r-bit64
+  - pip
+  - pip:
+      - duckdb==1.5.4

@@ -48,6 +48,8 @@ IndexedDB recovery is automatic and distinct from downloading a portable `.datac
 
 CSV exports omit hidden lineage and include a separate data dictionary. They do not automatically encode categories for machine learning. Missing CSV fields are unquoted empty values; literal blank strings are quoted. Use the project or typed execution results to retain complete type information.
 
+To continue an analysis in R or Python, choose **Run all outputs**, then **File → Export R / tidyverse + source assets** or **Export Python / pandas + source assets**. Extract the ZIP and follow its README to install dependencies and run `analysis.R` or `analysis.py`. Both require DuckDB: compatible steps use pandas or tidyverse, and the remaining steps use the original SQL. The script recreates every recipe and exports its tables. It includes full inputs rather than preview rows; chart code is not generated. See `coverage.json` for each step's backend and `outputs.json` for table names and types.
+
 Keyboard: Tab navigates controls, Enter activates them, Ctrl/⌘ S downloads a backup, Ctrl/⌘ Z undoes outside text fields, Shift-Ctrl/⌘ Z redoes, and Ctrl/⌘ Enter runs. Recipe list offers the complete authoring path without dragging. At narrow widths switch between Project, Canvas, and Inspector tabs.
 
 ## Pattern-based text operations

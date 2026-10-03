@@ -44,6 +44,8 @@ export interface Profile {
 }
 export interface StepResult {
   operationId: string;
+  /** Executable compiler output, without display names interpolated into comments. */
+  statement?: string;
   before: TableResult;
   after?: TableResult;
   error?: string;
@@ -137,7 +139,13 @@ export class Engine {
   >();
   operationCache = new Map<
     string,
-    { key: string; relation: Relation; diagnostics: Diagnostic[]; sql: string }
+    {
+      key: string;
+      relation: Relation;
+      diagnostics: Diagnostic[];
+      sql: string;
+      statement: string;
+    }
   >();
   snapshotCache = new Map<string, TableResult>();
   constructor(
@@ -406,7 +414,12 @@ export class Engine {
                 cached.sql,
               );
               this.sqlStatements.push(cached.sql);
-              steps.push({ operationId: op.id, before, after });
+              steps.push({
+                operationId: op.id,
+                statement: cached.statement,
+                before,
+                after,
+              });
               result.diagnostics.push(...cached.diagnostics);
               this.relations.set(op.id, relation);
               current = relation;
@@ -431,7 +444,8 @@ export class Engine {
               rowMeaning: recipe.rowMeaning || current.rowMeaning,
               reviewMeaning: compiled.reviewMeaning,
             };
-            const sql = `-- ${recipe.name} / ${op.kind} [${op.id}]\nCREATE OR REPLACE TEMP VIEW ${q(name)} AS\n${compiled.sql};`;
+            const statement = `CREATE OR REPLACE TEMP VIEW ${q(name)} AS\n${compiled.sql};`;
+            const sql = `-- ${recipe.name} / ${op.kind} [${op.id}]\n${statement}`;
             const after = await this.snapshot(
               op.id,
               relation,
@@ -444,9 +458,10 @@ export class Engine {
               relation,
               diagnostics: compiled.diagnostics,
               sql,
+              statement,
             });
             this.sqlStatements.push(sql);
-            steps.push({ operationId: op.id, before, after });
+            steps.push({ operationId: op.id, statement, before, after });
             result.diagnostics.push(...compiled.diagnostics);
             this.relations.set(op.id, relation);
             current = relation;

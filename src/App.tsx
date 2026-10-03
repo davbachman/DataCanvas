@@ -77,6 +77,11 @@ import { Report } from "./editor/Report";
 import { QueryView } from "./editor/QueryView";
 import { quote, literal, storageCast } from "./compiler/expressions";
 import { zipSync, strToU8 } from "fflate";
+import {
+  exportCode,
+  validateCodeExport,
+  type CodeLanguage,
+} from "./export/code";
 const categories = [
   "Choose",
   "Clean",
@@ -107,6 +112,7 @@ export default function App() {
     [saveStatus, setSaveStatus] = useState("Opening recovery…"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
+    [exportingCode, setExportingCode] = useState(false),
     [auto, setAuto] = useState(true),
     [dark, setDark] = useState(false),
     [importFile, setImportFile] = useState<File>(),
@@ -620,6 +626,39 @@ export default function App() {
       }),
     );
   }
+  async function exportAnalysis(language: CodeLanguage) {
+    if (!bundle) return;
+    try {
+      validateCodeExport(bundle, result);
+      setExportingCode(true);
+      const generation = client.current!.generation;
+      const sources: Record<string, TableResult> = {};
+      for (const source of bundle.project.sources)
+        sources[source.id] = await client.current!.request("table", {
+          tableId: source.id,
+        });
+      if (
+        bundleRef.current !== bundle ||
+        client.current!.generation !== generation
+      )
+        throw new Error(
+          "The project changed while preparing the export. Run all outputs and export again.",
+        );
+      const exported = exportCode(bundle, result, language, sources);
+      download(
+        `${bundle.project.title} ${language === "python" ? "Python" : "R"}.zip`,
+        exported.bytes,
+        "application/zip",
+      );
+      setNotice(
+        `Exported ${language === "python" ? "Python / pandas" : "R / tidyverse"} code and full source data. ${exported.sqlSteps} steps use DuckDB SQL; see the included README and coverage.json. Charts are not translated into plotting code.`,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setExportingCode(false);
+    }
+  }
   function showContributors(ids: string[]) {
     setLineage([...new Set(ids)]);
     setBottom("Contributing records");
@@ -752,6 +791,18 @@ export default function App() {
                 Export clean CSV + dictionary
               </button>
               <button onClick={exportSQL}>Export SQL + source assets</button>
+              <button
+                onClick={() => exportAnalysis("r")}
+                disabled={status === "running" || exportingCode}
+              >
+                Export R / tidyverse + source assets
+              </button>
+              <button
+                onClick={() => exportAnalysis("python")}
+                disabled={status === "running" || exportingCode}
+              >
+                Export Python / pandas + source assets
+              </button>
               <hr />
               <button onClick={() => setShowExamples(true)}>
                 Example projects
