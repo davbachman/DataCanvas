@@ -54,7 +54,9 @@ test("laptop layout, dark theme, all chart families and layers/facets render", a
   await page.getByRole("button", { name: /Monthly distributions/ }).click();
   await expect(page.locator(".plot svg")).toBeVisible();
   await page.getByText("Facets & scales", { exact: true }).click();
-  await page.getByLabel("Facet columns").selectOption("");
+  await page
+    .getByRole("combobox", { name: "Facet columns", exact: true })
+    .selectOption("");
   await page.getByLabel("X encoding").selectOption("temperature");
   await page.getByLabel("Y encoding").selectOption("temperature");
   for (const family of [
@@ -71,7 +73,9 @@ test("laptop layout, dark theme, all chart families and layers/facets render", a
   }
   await page.getByLabel("Chart family").selectOption("scatter");
   await page.getByRole("button", { name: "Add layer", exact: true }).click();
-  await page.getByLabel("Facet columns").selectOption("region");
+  await page
+    .getByRole("combobox", { name: "Facet columns", exact: true })
+    .selectOption("region");
   await expect(page.locator(".plot svg")).toBeVisible();
   await page.screenshot({ path: "test-results/faceted-layers-1280.png" });
   expect(errors).toEqual([]);
