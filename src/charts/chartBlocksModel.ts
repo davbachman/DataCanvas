@@ -97,6 +97,7 @@ export function defineChartBlocks() {
             ["Maximum by first field", "max"],
             ["Bin first field and count", "bin"],
             ["Box quartiles", "quartiles"],
+            ["Mean and uncertainty", "uncertainty"],
           ]),
           "MODE",
         );
@@ -123,6 +124,8 @@ export function defineChartBlocks() {
               "bar",
               "scatter",
               "line",
+              "errorbar",
+              "errorband",
               "box",
               "heatmap",
               "rule",
@@ -194,6 +197,54 @@ export function defineChartBlocks() {
         );
       },
     };
+  Blockly.Blocks.dcv_line = {
+    init() {
+      this.appendDummyInput()
+        .appendField("LINE STYLE")
+        .appendField(
+          new Blockly.FieldDropdown(
+            pair(["solid", "dashed", "dotted", "dashdot"]),
+          ),
+          "DASH",
+        );
+      this.appendDummyInput()
+        .appendField("width")
+        .appendField(new Blockly.FieldNumber(2, 0.5, 12, 0.5), "WIDTH")
+        .appendField("points")
+        .appendField(new Blockly.FieldCheckbox("FALSE"), "POINTS");
+      this.appendDummyInput()
+        .appendField("dash by")
+        .appendField(
+          new Blockly.FieldDropdown(() => fieldOptions(this)),
+          "FIELD",
+        );
+      this.setPreviousStatement(true, "ChartAppearance");
+      this.setNextStatement(true, "ChartAppearance");
+      this.setColour("#aa7942");
+    },
+  };
+  Blockly.Blocks.dcv_uncertainty = {
+    init() {
+      this.appendDummyInput()
+        .appendField("UNCERTAINTY")
+        .appendField(
+          new Blockly.FieldDropdown(pair(["sd", "se", "ci_normal"])),
+          "METHOD",
+        );
+      this.appendDummyInput()
+        .appendField("SD/SE multiplier")
+        .appendField(new Blockly.FieldNumber(1, 0.01, 10), "MULTIPLIER");
+      this.appendDummyInput()
+        .appendField("normal CI %")
+        .appendField(
+          new Blockly.FieldDropdown(pair(["90", "95", "99"])),
+          "CONFIDENCE",
+        );
+      this.setPreviousStatement(true, "ChartAppearance");
+      this.setNextStatement(true, "ChartAppearance");
+      this.setColour("#aa7942");
+    },
+  };
   Blockly.Blocks.dcv_stack = {
     init() {
       this.appendDummyInput()
@@ -205,6 +256,7 @@ export function defineChartBlocks() {
             ["Stacked", "zero"],
             ["Percentage", "normalize"],
             ["Centered", "center"],
+            ["Grouped / side-by-side", "grouped"],
           ]),
           "STACK",
         );
@@ -262,15 +314,19 @@ export function defineChartBlocks() {
   };
 }
 export function layerMode(layer: Layer) {
-  return layer.mark === "histogram"
-    ? "bin"
-    : layer.mark === "count"
-      ? "count"
-      : layer.mark === "box"
-        ? "quartiles"
-        : ["bar", "heatmap", "choropleth", "pie", "donut"].includes(layer.mark)
-          ? layer.aggregate || "explicit"
-          : "explicit";
+  return ["errorbar", "errorband"].includes(layer.mark)
+    ? "uncertainty"
+    : layer.mark === "histogram"
+      ? "bin"
+      : layer.mark === "count"
+        ? "count"
+        : layer.mark === "box"
+          ? "quartiles"
+          : ["bar", "heatmap", "choropleth", "pie", "donut"].includes(
+                layer.mark,
+              )
+            ? layer.aggregate || "explicit"
+            : "explicit";
 }
 function newBlock(
   ws: Blockly.Workspace,
@@ -307,6 +363,19 @@ export function addChartLayer(ws: Blockly.Workspace, layer: Layer) {
     previous.nextConnection!.connect(b.previousConnection!);
     previous = b;
   };
+  if (["line", "rule", "errorbar", "errorband"].includes(layer.mark))
+    append("dcv_line", {
+      DASH: layer.lineDash || (layer.mark === "rule" ? "dashed" : "solid"),
+      WIDTH: String(layer.lineWidth || 2),
+      POINTS: layer.pointMarkers ? "TRUE" : "FALSE",
+      FIELD: layer.strokeDashField || "",
+    });
+  if (["errorbar", "errorband"].includes(layer.mark))
+    append("dcv_uncertainty", {
+      METHOD: layer.uncertainty?.method || "se",
+      MULTIPLIER: String(layer.uncertainty?.multiplier || 1),
+      CONFIDENCE: String(layer.uncertainty?.confidence || 95),
+    });
   if (canOrient(layer.mark) && layer.stack)
     append("dcv_stack", { STACK: layer.stack });
   if (canOrient(layer.mark))
@@ -423,8 +492,9 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
     if (kind === "bar" && mode === "count")
       mark =
         saved.mark === "bar" && saved.aggregate === "count" ? "bar" : "count";
-    const allowed =
-      kind === "bar"
+    const allowed = ["errorbar", "errorband"].includes(kind)
+      ? ["uncertainty"]
+      : kind === "bar"
         ? ["explicit", "count", "sum", "mean", "median", "min", "max", "bin"]
         : isPieMark(kind)
           ? ["explicit", "count", "sum"]
@@ -445,7 +515,8 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
       x: draw!.getFieldValue("X") || undefined,
       y: draw!.getFieldValue("Y") || undefined,
       aggregate:
-        ["explicit", "bin", "quartiles"].includes(mode) || mark === "count"
+        ["explicit", "bin", "quartiles", "uncertainty"].includes(mode) ||
+        mark === "count"
           ? undefined
           : mode,
     };
@@ -463,6 +534,14 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
       layer.orientation = undefined;
       layer.stack = undefined;
     }
+    for (const k of [
+      "lineDash",
+      "lineWidth",
+      "pointMarkers",
+      "strokeDashField",
+      "uncertainty",
+    ] as const)
+      layer[k] = undefined;
     if (isPieMark(mark)) layer.showPercent = false;
     if (!isPieMark(mark) && mark !== "choropleth" && mark !== "rule")
       for (const k of ["color", "size", "shape", "detail"] as const)
@@ -475,7 +554,35 @@ export function readChartWorkspace(ws: Blockly.Workspace, chart: Chart): Chart {
       if (seen.has(key))
         fail("Use only one " + key.replace("dcv_", "") + " block per layer.");
       seen.add(key);
-      if (b.type === "dcv_orientation") {
+      if (b.type === "dcv_line") {
+        if (!["line", "rule", "errorbar", "errorband"].includes(mark))
+          fail("Line style applies to lines, rules, and uncertainty marks.");
+        layer.lineDash =
+          b.getFieldValue("DASH") === (mark === "rule" ? "dashed" : "solid") &&
+          saved.lineDash === undefined
+            ? undefined
+            : b.getFieldValue("DASH");
+        layer.lineWidth =
+          Number(b.getFieldValue("WIDTH")) === 2 &&
+          saved.lineWidth === undefined
+            ? undefined
+            : Number(b.getFieldValue("WIDTH"));
+        layer.pointMarkers =
+          b.getFieldValue("POINTS") === "TRUE"
+            ? true
+            : saved.pointMarkers === false
+              ? false
+              : undefined;
+        layer.strokeDashField = b.getFieldValue("FIELD") || undefined;
+      } else if (b.type === "dcv_uncertainty") {
+        if (!["errorbar", "errorband"].includes(mark))
+          fail("Uncertainty settings need an error bar or band.");
+        layer.uncertainty = {
+          method: b.getFieldValue("METHOD"),
+          multiplier: Number(b.getFieldValue("MULTIPLIER")),
+          confidence: Number(b.getFieldValue("CONFIDENCE")) as 90 | 95 | 99,
+        };
+      } else if (b.type === "dcv_orientation") {
         if (!canOrient(mark))
           fail("Orientation blocks apply to bars, counts and histograms.");
         layer.orientation =

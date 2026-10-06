@@ -19,6 +19,7 @@ Start with [Getting started](docs/QUICKSTART.md) for a guided example, or use th
 | [Getting started](docs/QUICKSTART.md) | A guided first analysis, workspace tour, and six examples |
 | [Importing data and datetime values](docs/IMPORTING.md) | Files, missing tokens, types, metadata, and source replacement |
 | [Recipes and expressions](docs/RECIPES.md) | Blocks, Recipe list, execution, inspection, lineage, and dependencies |
+| [Teaching workflows](docs/TEACHING.md) | Datetime blocks, ranking, bulk renaming, categories, uncertainty, code explanations, and submission checks |
 | [Operation reference](docs/OPERATIONS.md) | Every cleaning, selection, derivation, reshape, combine, summary, and check operation |
 | [Regular expressions](docs/REGEX.md) | Filter/transform text and select columns by name patterns |
 | [Charts](docs/CHARTS.md) | Chart families, statistics, horizontal views, pies/donuts, selections, and image exports |

@@ -1,3 +1,5 @@
+import { RenamePreview } from "./RenamePreview";
+import { TIMEZONE_NAMES, TIMEZONE_VERSION } from "../compiler/datetime";
 import { ColumnRegexPreview } from "./ColumnRegexPreview";
 import { RegexPreview } from "./RegexPreview";
 import type { Column, Operation, Project, Ref } from "../domain/model";
@@ -172,7 +174,9 @@ export function Configure({
   referenceColumns,
   previewRegex,
   previewColumnRegex,
+  previewRename,
 }: {
+  previewRename: (params: any, columns: Column[]) => Promise<any[]>;
   previewColumnRegex: (
     params: any,
     columns: Column[],
@@ -302,6 +306,283 @@ export function Configure({
       <h3>{registry[o.kind as OpKind]?.label}</h3>
       <p className="muted">{registry[o.kind as OpKind]?.description}</p>
       {o.kind === "filter" && expression()}
+      {o.kind === "datetime" && (
+        <>
+          {select("action", "Date/time operation", [
+            "construct",
+            "add",
+            "extract",
+            "format",
+            "convert",
+          ])}
+          {text("name", "New column name")}
+          {p.action === "construct" ? (
+            <>
+              {select("target", "Construct", ["date", "timestamp"])}
+              {columnField("year", "Year column")}
+              {columnField("month", "Month column")}
+              {columnField("day", "Day column")}
+              {p.target === "timestamp" && (
+                <>
+                  <ColumnSelect
+                    label="Hour column (unselected = 0)"
+                    columns={columns}
+                    value={p.hour}
+                    optional
+                    onChange={(v) => set("hour", v)}
+                  />
+                  <ColumnSelect
+                    label="Minute column (unselected = 0)"
+                    columns={columns}
+                    value={p.minute}
+                    optional
+                    onChange={(v) => set("minute", v)}
+                  />
+                  {select("timeBasis", "Timestamp meaning", ["wall", "utc"])}
+                  <p>
+                    Wall time is a local clock reading, not an instant. UTC is
+                    an instant. Missing selected components remain missing;
+                    invalid dates are reported.
+                  </p>
+                </>
+              )}
+            </>
+          ) : (
+            columnField("columnId", "Date/time column")
+          )}
+          {p.action === "add" && (
+            <>
+              {expression("amount", "Signed duration")}
+              {select("unit", "Duration unit", [
+                "seconds",
+                "minutes",
+                "hours",
+                "days",
+                "weeks",
+              ])}
+              <p>
+                Use a negative amount to subtract. Days are 24 hours. For
+                elapsed time across DST, convert to UTC, add, then convert back
+                to local wall time.
+              </p>
+            </>
+          )}
+          {p.action === "extract" && (
+            <>
+              {select("part", "Extract component", [
+                "date",
+                "year",
+                "month",
+                "day",
+                "hour",
+                "minute",
+                "weekday",
+                "week",
+                "week_year",
+              ])}
+              <p>
+                Weekday: Monday 1–Sunday 7. ISO weeks start Monday; week 1
+                contains January 4. Use week_year with week near New Year.
+                Choose date to compare departure calendar dates.
+              </p>
+            </>
+          )}
+          {p.action === "format" && (
+            <>
+              {text("format", "Date/time format")}
+              <p>
+                English names: %B month, %A weekday. %I:%M %p gives 12-hour time
+                with AM/PM; %H:%M gives 24-hour time. %Y-%m-%d gives a calendar
+                date. Formatting returns text and does not convert timezones.
+              </p>
+              <button onClick={() => set("format", "%B %d, %Y %I:%M %p")}>
+                Month name + 12-hour time
+              </button>
+              <button onClick={() => set("format", "%A")}>Weekday name</button>
+            </>
+          )}
+          {p.action === "convert" && (
+            <>
+              {select("direction", "Explicit conversion", [
+                "local_to_utc",
+                "utc_to_local",
+              ])}
+              <Field label="IANA timezone">
+                <input
+                  list="timezone-names"
+                  value={p.zone}
+                  onChange={(e) => set("zone", e.target.value)}
+                />
+                <datalist id="timezone-names">
+                  {TIMEZONE_NAMES.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </Field>
+              {select("ambiguous", "Repeated local time (DST overlap)", [
+                "missing",
+                "earlier",
+                "later",
+              ])}
+              <p>
+                Nonexistent spring-forward times become missing. Repeated times
+                use your explicit policy (earlier/later UTC instant). Direction
+                interprets the selected clock fields explicitly; inspect the
+                source meaning first. Rules: IANA {TIMEZONE_VERSION}, UTC years
+                1900–2100. No host-timezone guessing.
+              </p>
+            </>
+          )}
+        </>
+      )}
+      {["rank", "topk"].includes(o.kind) && (
+        <>
+          {multi("groups", "Group by (empty = all rows)")}
+          {order("order")}
+          {select("method", "Ranking method", [
+            "row_number",
+            "rank",
+            "dense_rank",
+          ])}
+          {select("missing", "Missing ordering values", ["exclude", "include"])}
+          <p>
+            Row number breaks ties by stable source-row identity. Rank shares
+            positions and leaves gaps; dense rank shares positions without gaps.
+            Missing groups form their own group. Exclude leaves missing ranks
+            (or removes those rows from top-k); include uses each sort key's
+            missing placement.
+          </p>
+          {o.kind === "rank" ? (
+            text("name", "Rank column name")
+          ) : (
+            <>
+              {text("k", "Positions to keep (k)", "number")}
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={p.requireFull}
+                  onChange={(e) => set("requireFull", e.target.checked)}
+                />
+                Require at least k valid observations per group
+              </label>
+              <p>
+                Valid means every ordering field is present. Otherwise smaller
+                groups are kept. Rank/dense-rank cutoffs may retain more than k
+                rows because ties share positions.
+              </p>
+            </>
+          )}
+        </>
+      )}
+      {o.kind === "rename_many" && (
+        <>
+          {multi("columns", "Columns to rename")}
+          {select("action", "Rename rule", [
+            "prefix",
+            "suffix",
+            "literal",
+            "regex",
+          ])}
+          {text(
+            "search",
+            p.action === "regex"
+              ? "Find pattern (RE2)"
+              : "Text to remove or replace",
+          )}
+          {["literal", "regex"].includes(p.action) &&
+            text("replacement", "Replacement")}
+          {p.action === "regex" && (
+            <>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={p.ignoreCase}
+                  onChange={(e) => set("ignoreCase", e.target.checked)}
+                />
+                Ignore case
+              </label>
+              <p>
+                RE2 replacements use \1 through \9 for captures. Example: remove
+                prefix wk to rename wk1…wk76 as 1…76.
+              </p>
+            </>
+          )}
+          <RenamePreview params={p} columns={columns} preview={previewRename} />
+        </>
+      )}
+      {o.kind === "categories" && (
+        <>
+          {columnField()}
+          {select("role", "Analytical role", [
+            "nominal",
+            "ordinal",
+            "quantitative",
+            "temporal",
+            "identifier",
+          ])}
+          <p>
+            Nominal and ordinal roles treat numeric values as categories without
+            converting their stored type.
+          </p>
+          <Field label="Category order (one value per line)">
+            <textarea
+              value={p.levels.join("\n")}
+              onChange={(e) =>
+                set("levels", e.target.value ? e.target.value.split("\n") : [])
+              }
+            />
+          </Field>
+          <button
+            onClick={() =>
+              set("levels", [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ])
+            }
+          >
+            Monday–Sunday
+          </button>
+          <button
+            onClick={() =>
+              set("levels", [
+                "January",
+                "February",
+                "March",
+                "April",
+                "May",
+                "June",
+                "July",
+                "August",
+                "September",
+                "October",
+                "November",
+                "December",
+              ])
+            }
+          >
+            January–December
+          </button>
+          <button
+            onClick={() =>
+              set(
+                "levels",
+                Array.from({ length: 12 }, (_, i) => String(i + 1)),
+              )
+            }
+          >
+            Numeric months 1–12
+          </button>
+          <p>
+            Listed levels appear first; unlisted observed categories follow.
+            Plots and legends retain this order.
+          </p>
+        </>
+      )}
       {o.kind === "derive" && (
         <>
           {text("name", "New column name")}
@@ -406,7 +687,19 @@ export function Configure({
           {["date", "timestamp"].includes(p.type) && (
             <>
               {text("format", "Explicit format (%Y-%m-%d)")}
-              <small>Timezone: UTC. Ambiguous formats are never guessed.</small>
+              <small>
+                Explicit formats are never guessed. Timestamp parsing interprets
+                clock fields using the selected meaning; use Date & time for
+                named-timezone conversions.
+              </small>
+              {p.type === "timestamp" && (
+                <Select
+                  label="Parsed timestamp meaning"
+                  value={p.timeBasis || "utc"}
+                  options={["wall", "utc"]}
+                  onChange={(v) => set("timeBasis", v)}
+                />
+              )}
             </>
           )}
           {select("decimalSeparator", "Decimal separator", [".", ","])}
@@ -483,7 +776,14 @@ export function Configure({
             backreferences are unsupported. Missing values are excluded by
             either filter and preserved by transformations.
           </small>
-          <RegexPreview key={o.id} params={p} preview={previewRegex} />
+          <RegexPreview
+            key={o.id}
+            params={p}
+            preview={previewRegex}
+            onExample={(patch) =>
+              onChange({ ...o, params: { ...p, ...patch } })
+            }
+          />
         </>
       )}
       {o.kind === "split" && (

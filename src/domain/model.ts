@@ -1,7 +1,9 @@
+import type { SubmissionSettings } from "./submission";
+import { colorSchema } from "./colors";
 import { chartStyleSchema, type ChartStyle } from "./chartStyle";
 import { mapSettingsSchema, type MapSettings } from "./geography";
 import { z } from "zod";
-export const SEMANTIC_VERSION = "1.0.0";
+export const SEMANTIC_VERSION = "2.0.0";
 export type Storage =
   "text" | "boolean" | "integer" | "decimal" | "date" | "timestamp";
 export type Role =
@@ -14,6 +16,8 @@ export interface Column {
   units?: string;
   description?: string;
   levels?: string[];
+  timeBasis?: "wall" | "utc";
+  timeZone?: string;
 }
 export type Value =
   | null
@@ -79,7 +83,9 @@ export interface Layer {
     | "map_points"
     | "choropleth"
     | "pie"
-    | "donut";
+    | "donut"
+    | "errorbar"
+    | "errorband";
   x?: string;
   x2?: string;
   y?: string;
@@ -95,7 +101,17 @@ export interface Layer {
   constantSize?: number;
   showPercent?: boolean;
   orientation?: "vertical" | "horizontal";
-  stack?: "none" | "zero" | "normalize" | "center";
+  stack?: "none" | "zero" | "normalize" | "center" | "grouped";
+  lineDash?: "solid" | "dashed" | "dotted" | "dashdot";
+  lineWidth?: number;
+  pointMarkers?: boolean;
+  strokeDashField?: string;
+  opacity?: number;
+  uncertainty?: {
+    method: "sd" | "se" | "ci_normal";
+    multiplier: number;
+    confidence: 90 | 95 | 99;
+  };
   label?: string;
 }
 export interface Chart {
@@ -134,7 +150,7 @@ export interface Query {
 }
 export interface Project {
   formatName: "Data Canvas";
-  schemaVersion: 1;
+  schemaVersion: 2;
   semanticVersion: string;
   projectId: string;
   title: string;
@@ -144,6 +160,7 @@ export interface Project {
   charts: Chart[];
   reportItems: ReportItem[];
   queries: Query[];
+  submission?: SubmissionSettings;
   viewState: Record<string, unknown>;
   engineVersions: Record<string, string>;
   randomSeeds: Record<string, string>;
@@ -193,10 +210,25 @@ const c = z.object({
   units: z.string().optional(),
   description: z.string().optional(),
   levels: z.array(z.string()).optional(),
+  timeBasis: z.enum(["wall", "utc"]).optional(),
+  timeZone: z.string().optional(),
 });
 export const projectSchema = z.object({
   formatName: z.literal("Data Canvas"),
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
+  submission: z
+    .object({
+      enabled: z.boolean(),
+      required: z
+        .array(
+          z.object({
+            kind: z.enum(["recipe", "chart"]),
+            name: z.string().max(500),
+          }),
+        )
+        .max(200),
+    })
+    .optional(),
   semanticVersion: z.literal(SEMANTIC_VERSION),
   projectId: id,
   title: z.string().max(500),
@@ -269,6 +301,8 @@ export const projectSchema = z.object({
               "choropleth",
               "pie",
               "donut",
+              "errorbar",
+              "errorband",
             ]),
             x: z.string().optional(),
             x2: z.string().optional(),
@@ -283,13 +317,30 @@ export const projectSchema = z.object({
             constant: z.number().finite().optional(),
             showPercent: z.boolean().optional(),
             orientation: z.enum(["vertical", "horizontal"]).optional(),
-            stack: z.enum(["none", "zero", "normalize", "center"]).optional(),
+            stack: z
+              .enum(["none", "zero", "normalize", "center", "grouped"])
+              .optional(),
+            lineDash: z
+              .enum(["solid", "dashed", "dotted", "dashdot"])
+              .optional(),
+            lineWidth: z.number().min(0.5).max(12).optional(),
+            pointMarkers: z.boolean().optional(),
+            strokeDashField: z.string().optional(),
+            opacity: z.number().min(0).max(1).optional(),
+            uncertainty: z
+              .object({
+                method: z.enum(["sd", "se", "ci_normal"]),
+                multiplier: z.number().positive().max(10),
+                confidence: z.union([
+                  z.literal(90),
+                  z.literal(95),
+                  z.literal(99),
+                ]),
+              })
+              .optional(),
             label: z.string().max(120).optional(),
             constantSize: z.number().min(1).max(1000).optional(),
-            constantColor: z
-              .string()
-              .regex(/^#[0-9a-fA-F]{6}$/)
-              .optional(),
+            constantColor: colorSchema().optional(),
           }),
         )
         .min(1)
@@ -444,7 +495,7 @@ export function topological(
 export function blankProject(): Project {
   return {
     formatName: "Data Canvas",
-    schemaVersion: 1,
+    schemaVersion: 2,
     semanticVersion: SEMANTIC_VERSION,
     projectId: uid("project"),
     title: "Untitled exploration",

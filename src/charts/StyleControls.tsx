@@ -1,8 +1,8 @@
+import { ColorInput } from "../editor/ColorInput";
 import { useEffect, useState } from "react";
 import type { Chart } from "../domain/model";
 import { Field, Select } from "../editor/Configure";
 import { styleGroups, fieldDefault, parseStyleField } from "./styleFields";
-import { chartStyleSchema } from "../domain/chartStyle";
 function Dimension({
   label,
   value,
@@ -36,34 +36,6 @@ function Dimension({
           if (e.key === "Enter") e.currentTarget.blur();
         }}
       />
-    </Field>
-  );
-}
-function Background({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  return (
-    <Field label="Chart background">
-      <input
-        value={draft}
-        placeholder="auto, transparent, or #ffffff"
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          if (
-            draft === "auto" ||
-            chartStyleSchema.shape.background.safeParse(draft).success
-          )
-            onChange(draft);
-          else setDraft(value);
-        }}
-      />
-      <small>auto, transparent, or a hex color</small>
     </Field>
   );
 }
@@ -121,7 +93,9 @@ export function StyleControls({
               );
             if (field.type === "color")
               return (
-                <Background
+                <ColorInput
+                  label="Chart background"
+                  background
                   key={field.key}
                   value={String(value)}
                   onChange={set}

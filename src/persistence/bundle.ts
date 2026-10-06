@@ -1,3 +1,4 @@
+import { normalizeColor } from "../domain/colors";
 import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { openDB } from "idb";
 import { type Bundle, CanvasError, validateProject } from "../domain/model";
@@ -5,7 +6,30 @@ import { validateBundle } from "../engine/core";
 export function packBundle(bundle: Bundle): Uint8Array {
   return zipSync(
     {
-      "manifest.json": strToU8(JSON.stringify(bundle.project, null, 2)),
+      "manifest.json": strToU8(
+        JSON.stringify(
+          {
+            ...bundle.project,
+            charts: bundle.project.charts.map((c) => ({
+              ...c,
+              style: c.style?.background
+                ? {
+                    ...c.style,
+                    background: normalizeColor(c.style.background, true),
+                  }
+                : c.style,
+              layers: c.layers.map((l) => ({
+                ...l,
+                constantColor: l.constantColor
+                  ? normalizeColor(l.constantColor)
+                  : undefined,
+              })),
+            })),
+          },
+          null,
+          2,
+        ),
+      ),
       ...bundle.assets,
     },
     { level: 6 },

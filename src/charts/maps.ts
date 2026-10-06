@@ -105,6 +105,13 @@ export async function resolveMap(
   const field = (id: string) => ({
     field: id,
     title: col(id).name,
+    ...(col(id).levels?.length
+      ? {
+          sort: col(id).levels!.map((v) =>
+            numeric(col(id)) && Number.isFinite(Number(v)) ? Number(v) : v,
+          ),
+        }
+      : {}),
     type: col(id).role === "quantitative" ? "quantitative" : "nominal",
   });
   for (const [index, layer] of chart.layers.entries()) {
@@ -340,13 +347,16 @@ export async function resolveMap(
             stroke: "white",
             strokeWidth: 0.6,
             tooltip: true,
-            opacity: m.overlayOpacity ?? (street ? 0.65 : 1),
+            opacity:
+              (layer.opacity ?? 1) * (m.overlayOpacity ?? (street ? 0.65 : 1)),
           }
         : {
             type: "point",
             filled: true,
             size: layer.constantSize || 65,
-            opacity: m.overlayOpacity ?? (street ? 0.65 : 0.8),
+            opacity:
+              (layer.opacity ?? 1) *
+              (m.overlayOpacity ?? (street ? 0.65 : 0.8)),
             stroke: "white",
             strokeWidth: 0.5,
             tooltip: true,

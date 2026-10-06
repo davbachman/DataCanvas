@@ -252,6 +252,16 @@ export function operationDetail(o: Operation, columns: Column[]) {
   const name = (id: string) => columns.find((c) => c.id === id)?.name || id;
   const p = o.params;
   switch (o.kind) {
+    case "datetime":
+      return `${p.action} → ${p.name}${p.action === "add" ? " · " + p.unit : ""}`;
+    case "rank":
+      return `${p.method} by ${p.groups.map(name).join(", ") || "all rows"} → ${p.name}`;
+    case "topk":
+      return `first ${p.k} · ${p.method} · by ${p.groups.map(name).join(", ") || "all rows"}`;
+    case "rename_many":
+      return `${p.action} “${p.search}” · ${p.columns.length} labels`;
+    case "categories":
+      return `${name(p.columnId)} · ${p.role} · ${p.levels.length} ordered levels`;
     case "select":
       return p.selection === "regex"
         ? `${p.mode} names /${p.pattern}/${p.ignoreCase ? "i" : ""}`

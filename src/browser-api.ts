@@ -1,3 +1,4 @@
+import { checkSubmission } from "./domain/submission";
 import { WorkerClient } from "./engine/client";
 import { unpackBundle, packBundle } from "./persistence/bundle";
 import { validateBundle, type RunOptions, type RunResult } from "./engine/core";
@@ -7,6 +8,7 @@ export const DataCanvas = {
   load: unpackBundle,
   save: packBundle,
   validate: validateBundle,
+  checkSubmission,
   async run(bundle: Bundle, options: RunOptions = {}, signal?: AbortSignal) {
     validateBundle(bundle);
     const client = new WorkerClient();
@@ -33,6 +35,7 @@ export const DataCanvas = {
           result.status = "failed";
         }
       }
+      result.submission = checkSubmission(bundle.project, result);
       return result;
     } finally {
       signal?.removeEventListener("abort", cancel);

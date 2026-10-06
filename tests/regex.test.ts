@@ -18,7 +18,7 @@ it("RE2 handles flags, capture replacements, zero-width matches, Unicode, and li
         pattern: "([A-Z]+)-(\\d+)",
         replacement: "\\2/\\1",
       }),
-    ).toEqual({ matched: true, result: "123/AB 456/CD" });
+    ).toMatchObject({ matched: true, result: "123/AB 456/CD" });
     expect(
       await preview("aaa", {
         action: "replace",
@@ -26,7 +26,7 @@ it("RE2 handles flags, capture replacements, zero-width matches, Unicode, and li
         replacement: "x",
         global: false,
       }),
-    ).toEqual({ matched: true, result: "xaa" });
+    ).toMatchObject({ matched: true, result: "xaa" });
     expect(
       (
         await preview("a\nB\nc", {

@@ -39,7 +39,7 @@ ISO-formatted values can be imported as Date or Timestamp. For other formats, im
 4. Add **Derive column** with a `call` expression such as `year`, `month`, or `day` to create grouping fields. Use `elapsed_days` with start and end columns for the number of day boundaries crossed.
 5. Use parsed dates as chart fields or sort keys. For monthly summaries, derive year and month and group by both, so different years are not pooled accidentally.
 
-Timestamps use UTC; there is no timezone-picker workflow. Normalize local-time conventions before importing when the source does not identify its timezone. `elapsed_days` counts calendar day boundaries, not fractional 24-hour durations.
+Source timestamp imports use UTC. For local wall time, import clock text as text and choose **Parse values → Timestamp meaning → wall**, or construct a timestamp from components. **Date & time** provides explicit IANA timezone conversion, signed minute durations, extraction, and formatting; see the [datetime teaching guide](TEACHING.md#construct-adjust-and-interpret-dates). `elapsed_days` counts calendar day boundaries, not fractional 24-hour durations.
 
 ## Describe columns and replace a source
 

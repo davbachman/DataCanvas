@@ -2391,3 +2391,51 @@ details > summary {
   border-radius: 8px;
   overflow: hidden;
 }
+
+.teaching-panel {
+  padding: 24px;
+  overflow: auto;
+  height: 100%;
+}
+.teaching-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 420px;
+  overflow: auto;
+  padding: 14px;
+  background: var(--surface-alt, #eef3f1);
+}
+.teaching-panel table,
+.regex-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.teaching-panel th,
+.teaching-panel td,
+.regex-preview th,
+.regex-preview td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.checklist-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+.checklist-row input {
+  flex: 1;
+  min-width: 0;
+}
+.color-entry {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #888;
+  flex-shrink: 0;
+}

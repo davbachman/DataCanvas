@@ -39,3 +39,7 @@ Native measurements: cold database startup **12 ms**, first full pipeline **4.10
 - CLI memory settings constrain the DuckDB budget and JavaScript heap independently; callers needing a hard total-memory ceiling must provide OS/container isolation. See the [integration contract](INTEGRATION.md).
 
 See the [Pages workflow](https://github.com/davbachman/DataCanvas/actions/workflows/pages.yml) for the exact commit’s cross-browser results, deployment status, and published-asset verification. Accessibility and performance qualifications above remain applicable.
+
+## Teaching workflow coverage
+
+The teaching fixture exercises constructed timestamps, negative minute durations, midnight/leap/year boundaries, ISO weeks, missing components, DST gaps and repeated times, elapsed UTC arithmetic, all three ranking methods, top-k ties and small groups, bulk renaming with downstream stable-ID references, ordered numeric categories, grouped horizontal bars, line styles, and uncertainty statistics. It runs through native and Wasm parity checks and the actual generated Python/R scripts. Additional checks cover name collisions, RE2 capture previews, invalid components, CSS color normalization, chart-block round trips, and optional submission completeness. Browser journeys edit the controls, inspect code coverage, save/reopen projects, and verify the save-time checklist.

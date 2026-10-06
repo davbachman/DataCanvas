@@ -1,3 +1,4 @@
+import { teachingFixture } from "../fixtures/teaching";
 import { stylingFixture } from "../fixtures/styling";
 import { horizontalFixture } from "../fixtures/horizontal";
 import { pieFixture } from "../fixtures/pies";
@@ -16,6 +17,7 @@ for (const name of [
   "pies",
   "horizontal",
   "styling",
+  "teaching",
 ]) {
   test(`browser/headless semantic parity: ${name}`, async ({ page }) => {
     await page.goto("./");
@@ -27,13 +29,15 @@ for (const name of [
         ? "tests/fixtures/adversarial.datacanvas"
         : `public/examples/${name}.datacanvas`;
     const bundle =
-      name === "pies"
-        ? await pieFixture()
-        : name === "horizontal"
-          ? await horizontalFixture()
-          : name === "styling"
-            ? await stylingFixture()
-            : await load(path);
+      name === "teaching"
+        ? await teachingFixture()
+        : name === "pies"
+          ? await pieFixture()
+          : name === "horizontal"
+            ? await horizontalFixture()
+            : name === "styling"
+              ? await stylingFixture()
+              : await load(path);
     const bytes = Array.from(packBundle(bundle));
     const native = await run(bundle);
     const browser = await page.evaluate(async (data) => {
@@ -45,6 +49,7 @@ for (const name of [
     }, bytes);
     expect(browser.engineVersion).toBe(native.engineVersion);
     expect(browser.errors).toEqual(native.errors);
+    expect(browser.submission).toEqual(native.submission);
     const compare = (actual: any, expected: any) => {
       expect(actual.columns).toEqual(expected.columns);
       expect(actual.rowCount).toBe(expected.rowCount);

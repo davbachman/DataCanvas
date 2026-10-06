@@ -173,6 +173,121 @@ export const registry = {
       algorithm: z.literal("md5-rank-v1"),
     }),
   },
+  datetime: {
+    label: "Date & time",
+    category: "Derive",
+    color: "#7165a8",
+    description:
+      "Construct, shift, extract, format, or explicitly convert wall time and UTC. Missing values stay missing.",
+    schema: z.object({
+      action: z.enum(["construct", "add", "extract", "format", "convert"]),
+      outputId: str.min(1),
+      name: str.min(1),
+      columnId: str,
+      target: z.enum(["date", "timestamp"]),
+      year: str,
+      month: str,
+      day: str,
+      hour: str,
+      minute: str,
+      timeBasis: z.enum(["wall", "utc"]),
+      amount: expr,
+      unit: z.enum(["seconds", "minutes", "hours", "days", "weeks"]),
+      part: z.enum([
+        "date",
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "weekday",
+        "week",
+        "week_year",
+      ]),
+      format: str.max(500),
+      direction: z.enum(["local_to_utc", "utc_to_local"]),
+      zone: str.min(1),
+      ambiguous: z.enum(["missing", "earlier", "later"]),
+    }),
+  },
+  rank: {
+    label: "Rank within groups",
+    category: "Choose",
+    color: "#477f99",
+    description:
+      "Row number, rank, or dense rank with explicit groups, ordering, missing policy, and stable tie breaking.",
+    schema: z.object({
+      groups: cols,
+      order: z
+        .array(
+          z.object({
+            columnId: str,
+            direction: z.enum(["asc", "desc"]),
+            nulls: z.enum(["first", "last"]),
+          }),
+        )
+        .min(1),
+      method: z.enum(["row_number", "rank", "dense_rank"]),
+      missing: z.enum(["exclude", "include"]),
+      outputId: str.min(1),
+      name: str.min(1),
+    }),
+  },
+  topk: {
+    label: "First k within groups",
+    category: "Choose",
+    color: "#477f99",
+    description:
+      "Keep the first k positions in each group; optionally require k valid observations. Rank/dense-rank cutoffs can retain more than k rows.",
+    schema: z.object({
+      groups: cols,
+      order: z
+        .array(
+          z.object({
+            columnId: str,
+            direction: z.enum(["asc", "desc"]),
+            nulls: z.enum(["first", "last"]),
+          }),
+        )
+        .min(1),
+      method: z.enum(["row_number", "rank", "dense_rank"]),
+      missing: z.enum(["exclude", "include"]),
+      k: z.number().int().positive(),
+      requireFull: z.boolean(),
+    }),
+  },
+  rename_many: {
+    label: "Rename multiple columns",
+    category: "Choose",
+    color: "#477f99",
+    description:
+      "Remove a prefix/suffix or replace literal/RE2 text in labels. Preview collisions; column identities stay unchanged.",
+    schema: z.object({
+      columns: cols,
+      action: z.enum(["prefix", "suffix", "literal", "regex"]),
+      search: str.min(1).max(4096),
+      replacement: str.max(200),
+      ignoreCase: z.boolean(),
+    }),
+  },
+  categories: {
+    label: "Set category order",
+    category: "Clean",
+    color: "#9d7240",
+    description:
+      "Set analytical roles and category order without changing stored values. Applies to recipe charts and exports.",
+    schema: z.object({
+      columnId: str,
+      role: z.enum([
+        "nominal",
+        "ordinal",
+        "quantitative",
+        "temporal",
+        "identifier",
+      ]),
+      levels: cols,
+    }),
+  },
   parse: {
     label: "Parse values",
     category: "Clean",
@@ -184,6 +299,7 @@ export const registry = {
       type: z.enum(["integer", "decimal", "boolean", "date", "timestamp"]),
       format: str,
       decimalSeparator: z.enum([".", ","]),
+      timeBasis: z.enum(["wall", "utc"]).optional(),
     }),
   },
   text: {
@@ -448,6 +564,52 @@ export function newOperation(
     num = columns.find((c) => ["decimal", "integer"].includes(c.type))?.id || c;
   const id = uid("op");
   const defaults: Record<OpKind, any> = {
+    datetime: {
+      action: "construct",
+      outputId: `${id}_datetime`,
+      name: "Scheduled departure",
+      columnId:
+        columns.find((c) => c.type === "timestamp" || c.type === "date")?.id ||
+        c,
+      target: "timestamp",
+      year: columns.find((c) => /^year$/i.test(c.name))?.id || c,
+      month: columns.find((c) => /^month$/i.test(c.name))?.id || c,
+      day: columns.find((c) => /^day$/i.test(c.name))?.id || c,
+      hour: "",
+      minute: "",
+      timeBasis: "wall",
+      amount: lit(0),
+      unit: "minutes",
+      part: "hour",
+      format: "%B %d, %Y %I:%M %p",
+      direction: "local_to_utc",
+      zone: "America/New_York",
+      ambiguous: "missing",
+    },
+    rank: {
+      groups: [],
+      order: [{ columnId: num, direction: "asc", nulls: "last" }],
+      method: "row_number",
+      missing: "exclude",
+      outputId: `${id}_rank`,
+      name: "Within-group rank",
+    },
+    topk: {
+      groups: [],
+      order: [{ columnId: num, direction: "asc", nulls: "last" }],
+      method: "row_number",
+      missing: "exclude",
+      k: 3,
+      requireFull: false,
+    },
+    rename_many: {
+      columns: columns.map((c) => c.id),
+      action: "prefix",
+      search: "wk",
+      replacement: "",
+      ignoreCase: false,
+    },
+    categories: { columnId: c, role: "ordinal", levels: [] },
     filter: { expression: binary(">", col(num), lit(0)) },
     select: {
       columns: columns.map((c) => c.id),

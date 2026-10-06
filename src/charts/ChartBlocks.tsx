@@ -186,7 +186,15 @@ export function ChartBlocks({
         blocks apply to the whole chart.
       </p>
       <div className="inline chart-block-toolbar">
-        {["layer", "orientation", "stack", "encoding", "labels"].map((kind) => (
+        {[
+          "layer",
+          "orientation",
+          "stack",
+          "encoding",
+          "labels",
+          "line",
+          "uncertainty",
+        ].map((kind) => (
           <button key={kind} onClick={() => add(kind)}>
             Add {kind} block
           </button>

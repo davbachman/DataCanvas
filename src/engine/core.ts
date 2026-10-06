@@ -1,3 +1,4 @@
+import type { SubmissionReport } from "../domain/submission";
 import {
   type Bundle,
   type Column,
@@ -71,6 +72,7 @@ export interface RunResult {
   sql: string;
   sourceOverrides?: unknown;
   charts?: unknown[];
+  submission?: SubmissionReport;
 }
 export interface RunOptions {
   outputIds?: string[];

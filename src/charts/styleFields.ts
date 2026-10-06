@@ -1,3 +1,4 @@
+import { normalizeColor } from "../domain/colors";
 import type { Chart } from "../domain/model";
 import type { ChartStyle } from "../domain/chartStyle";
 export type StyleField = {
@@ -264,6 +265,7 @@ export function parseStyleField(
   value: string | number | boolean,
 ) {
   if (value === "auto" || value === "") return undefined;
+  if (field.type === "color") return normalizeColor(String(value), true);
   if (field.key === "grid") return value === "true" || value === true;
   if (field.type === "boolean") return value === "TRUE" || value === true;
   if (field.type === "number")

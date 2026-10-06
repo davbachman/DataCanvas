@@ -1,3 +1,4 @@
+import { colorSchema } from "./colors";
 import { z } from "zod";
 export const chartStyleSchema = z.object({
   arrangement: z.enum(["overlay", "subplots"]).optional(),
@@ -9,10 +10,7 @@ export const chartStyleSchema = z.object({
   height: z.number().int().min(120).max(1200).optional(),
   padding: z.number().int().min(0).max(100).optional(),
   theme: z.enum(["canvas", "whitegrid", "minimal", "dark"]).optional(),
-  background: z
-    .string()
-    .regex(/^(#[0-9a-fA-F]{6}|transparent)$/)
-    .optional(),
+  background: colorSchema(true).optional(),
   font: z.enum(["sans-serif", "serif", "monospace"]).optional(),
   fontSize: z.number().int().min(8).max(28).optional(),
   titleSize: z.number().int().min(10).max(40).optional(),

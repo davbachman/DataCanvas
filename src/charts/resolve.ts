@@ -1,3 +1,5 @@
+import { normalizeColor } from "../domain/colors";
+import { uncertaintyStats } from "./uncertainty";
 import { chartStyleSchema } from "../domain/chartStyle";
 import { applyChartStyle } from "./style";
 import { isPieMark, canOrient } from "../domain/charts";
@@ -48,7 +50,15 @@ async function resolveUnstyledChart(
     field: id,
     type: type(id),
     ...(requireColumn(input.columns, id).levels?.length
-      ? { sort: requireColumn(input.columns, id).levels }
+      ? {
+          sort: requireColumn(input.columns, id).levels!.map((v) =>
+            ["integer", "decimal"].includes(
+              requireColumn(input.columns, id).type,
+            ) && Number.isFinite(Number(v))
+              ? Number(v)
+              : v,
+          ),
+        }
       : {}),
     title:
       axis === "x" && chart.scales.xTitle
@@ -78,12 +88,25 @@ async function resolveUnstyledChart(
   });
   for (const [index, layer] of chart.layers.entries()) {
     const firstMark = layers.length;
+    const uncertainty = ["errorbar", "errorband"].includes(layer.mark);
+    if (uncertainty && chart.scales.yLog)
+      throw new CanvasError(
+        "VALIDATION",
+        "Uncertainty displays require a linear Y axis so missing counts and intervals remain interpretable.",
+      );
     if (layer.mark === "rule") {
       layers.push({
         mark: {
           type: "rule",
           color: layer.constantColor || "#b56545",
-          strokeDash: [5, 4],
+          strokeDash: {
+            solid: [],
+            dashed: [8, 4],
+            dotted: [2, 3],
+            dashdot: [8, 3, 2, 3],
+          }[layer.lineDash || "dashed"],
+          strokeWidth: layer.lineWidth || 2,
+          opacity: layer.opacity ?? 1,
         },
         encoding: { y: { datum: layer.constant ?? 0, type: "quantitative" } },
       });
@@ -95,10 +118,29 @@ async function resolveUnstyledChart(
     const x = q(layer.x),
       y =
         layer.y &&
-        ["scatter", "line", "bar", "box", "heatmap"].includes(layer.mark)
+        [
+          "scatter",
+          "line",
+          "bar",
+          "box",
+          "heatmap",
+          "errorbar",
+          "errorband",
+        ].includes(layer.mark)
           ? q(requireColumn(input.columns, layer.y).id)
           : "";
-    if (["scatter", "line", "bar", "box", "heatmap"].includes(layer.mark) && !y)
+    if (
+      [
+        "scatter",
+        "line",
+        "bar",
+        "box",
+        "heatmap",
+        "errorbar",
+        "errorband",
+      ].includes(layer.mark) &&
+      !y
+    )
       throw new CanvasError(
         "VALIDATION",
         `Choose a y field for ${layer.mark}.`,
@@ -110,7 +152,10 @@ async function resolveUnstyledChart(
       layer.detail,
       layer.size,
       layer.shape,
-      ...(["count", "box", "bar", "heatmap"].includes(layer.mark)
+      layer.strokeDashField,
+      ...(["count", "box", "bar", "heatmap", "errorbar", "errorband"].includes(
+        layer.mark,
+      )
         ? [layer.x]
         : []),
       ...(layer.mark === "heatmap" ? [layer.y] : []),
@@ -119,7 +164,7 @@ async function resolveUnstyledChart(
     group.forEach((id) => requireColumn(input.columns, id));
     const required = [
       layer.x,
-      ...(y && layer.mark !== "line" ? [layer.y!] : []),
+      ...(y && layer.mark !== "line" && !uncertainty ? [layer.y!] : []),
       ...(chart.scales.xLog ? [layer.x] : []),
     ];
     const valid = [...new Set(required)]
@@ -224,6 +269,30 @@ async function resolveUnstyledChart(
         "Statistics computed from the complete recipe output. The table below is the exact chart transformation.",
       );
     }
+    if (uncertainty) {
+      if (
+        !["integer", "decimal"].includes(
+          requireColumn(input.columns, layer.y!).type,
+        )
+      )
+        throw new CanvasError(
+          "SCHEMA",
+          "Uncertainty displays require numeric observations.",
+        );
+      const stats = uncertaintyStats(layer, input, group, valid);
+      sql = stats.sql;
+      columns = stats.columns;
+      notes.push(stats.note);
+      encoding = {
+        x: field(layer.x),
+        y: {
+          field: stats.ids.lower,
+          type: "quantitative",
+          title: requireColumn(input.columns, layer.y!).name,
+        },
+        y2: { field: stats.ids.upper },
+      };
+    }
     if (layer.mark === "box") {
       const q1 = `${layer.id}_q1`,
         q3 = `${layer.id}_q3`,
@@ -272,6 +341,11 @@ async function resolveUnstyledChart(
     for (const channel of ["color", "size", "shape", "detail"] as const)
       if (layer[channel] && !(layer.mark === "heatmap" && channel === "color"))
         encoding[channel] = field(layer[channel]!, channel);
+    if (layer.strokeDashField && ["line", "errorband"].includes(layer.mark))
+      encoding.strokeDash = {
+        ...field(layer.strokeDashField),
+        type: "nominal",
+      };
     if (!encoding.color)
       encoding.color = { value: layer.constantColor || "#277c6c" };
     if (layer.x2) {
@@ -286,8 +360,27 @@ async function resolveUnstyledChart(
         type: c.role === "quantitative" ? "quantitative" : "nominal",
         title: c.name,
       }));
-    if (layer.mark === "line") {
-      encoding.order = { field: layer.x, type: type(layer.x) };
+    if (layer.mark === "line" || layer.mark === "errorband") {
+      const levels = requireColumn(input.columns, layer.x).levels || [];
+      if (levels.length) {
+        const ordered = [
+          ...new Set(values.map((v) => String((v as any)[layer.x!]))),
+        ].sort((a, b) => {
+          const ai = levels.indexOf(a),
+            bi = levels.indexOf(b);
+          return (
+            (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) ||
+            a.localeCompare(b)
+          );
+        });
+        values.forEach(
+          (v) =>
+            ((v as any)._categoryOrder = ordered.indexOf(
+              String((v as any)[layer.x!]),
+            )),
+        );
+        encoding.order = { field: "_categoryOrder", type: "quantitative" };
+      } else encoding.order = { field: layer.x, type: type(layer.x) };
       notes.push(
         "Line sorted by x within detail/color groups. Missing y values break the path; missing x values cannot be positioned and are omitted.",
       );
@@ -299,7 +392,11 @@ async function resolveUnstyledChart(
           ? "line"
           : layer.mark === "heatmap"
             ? "rect"
-            : "bar";
+            : layer.mark === "errorband"
+              ? "area"
+              : layer.mark === "errorbar"
+                ? "rule"
+                : "bar";
     const brushable =
       chart.style?.arrangement !== "subplots" &&
       index === 0 &&
@@ -309,8 +406,8 @@ async function resolveUnstyledChart(
       !chart.facetColumn;
     if (brushable)
       encoding.opacity = {
-        condition: { param: "brush", value: 0.85 },
-        value: 0.2,
+        condition: { param: "brush", value: layer.opacity ?? 0.85 },
+        value: (layer.opacity ?? 1) * 0.2,
       };
     if (canOrient(layer.mark)) {
       if (layer.stack !== undefined) {
@@ -319,12 +416,24 @@ async function resolveUnstyledChart(
             "VALIDATION",
             "Choose a color field to define the stacked groups.",
           );
-        if (layer.stack !== "none" && chart.scales.yLog)
+        if (!["none", "grouped"].includes(layer.stack) && chart.scales.yLog)
           throw new CanvasError(
             "VALIDATION",
             "Stacked bars require a linear value axis.",
           );
-        encoding.y.stack = layer.stack === "none" ? null : layer.stack;
+        if (layer.stack === "grouped") {
+          if (layer.mark === "histogram")
+            throw new CanvasError(
+              "VALIDATION",
+              "Grouped bars support bar/count charts. Use facets for grouped histograms.",
+            );
+          encoding.x.type = type(layer.x) === "ordinal" ? "ordinal" : "nominal";
+          encoding.xOffset = { ...field(layer.color!), type: "nominal" };
+          encoding.y.stack = null;
+          notes.push(
+            "Side-by-side groups share the category axis; stored values are unchanged.",
+          );
+        } else encoding.y.stack = layer.stack === "none" ? null : layer.stack;
         if (layer.stack === "normalize") {
           encoding.y.axis = { ...encoding.y.axis, format: ".0%" };
           encoding.y.title = "Share of total";
@@ -355,11 +464,12 @@ async function resolveUnstyledChart(
         };
       }
       if (layer.orientation === "horizontal") {
-        const { x, x2, y, y2, ...rest } = encoding;
+        const { x, x2, y, y2, xOffset, ...rest } = encoding;
         encoding = {
           ...rest,
           x: y,
           y: x,
+          ...(xOffset ? { yOffset: xOffset } : {}),
           ...(x2 ? { y2: x2 } : {}),
           ...(y2 ? { x2: y2 } : {}),
         };
@@ -382,14 +492,88 @@ async function resolveUnstyledChart(
         ...(canOrient(layer.mark)
           ? { orient: layer.orientation || "vertical" }
           : {}),
-        ...(mark === "line" ? { invalid: "break-paths-show-domains" } : {}),
+        ...(["line", "area", "rule"].includes(mark)
+          ? {
+              strokeWidth: layer.lineWidth || 2,
+              strokeDash: {
+                solid: [],
+                dashed: [8, 4],
+                dotted: [2, 3],
+                dashdot: [8, 3, 2, 3],
+              }[layer.lineDash || "solid"],
+            }
+          : {}),
+        ...(mark === "area" ? { invalid: "break-paths-show-domains" } : {}),
+        ...(mark === "line"
+          ? {
+              invalid: "break-paths-show-domains",
+              point: layer.pointMarkers
+                ? { filled: true, size: layer.constantSize || 45 }
+                : false,
+            }
+          : {}),
+        ...(layer.opacity !== undefined ? { opacity: layer.opacity } : {}),
+        ...(layer.mark === "errorband"
+          ? { opacity: layer.opacity ?? 0.25 }
+          : {}),
         ...(mark === "point"
-          ? { filled: true, size: layer.constantSize || 65, opacity: 0.75 }
+          ? {
+              filled: true,
+              size: layer.constantSize || 65,
+              opacity: layer.opacity ?? 0.75,
+            }
           : {}),
         tooltip: true,
       },
       encoding,
     });
+    if (uncertainty) {
+      const central = {
+        ...encoding,
+        y: {
+          field: `${layer.id}_mean`,
+          type: "quantitative",
+          title: requireColumn(input.columns, layer.y!).name,
+        },
+      };
+      delete (central as any).y2;
+      layers.push({
+        data: { values },
+        mark: {
+          type: layer.mark === "errorband" ? "line" : "point",
+          ...(layer.mark === "errorband"
+            ? { invalid: "break-paths-show-domains" }
+            : {}),
+          filled: true,
+          strokeWidth: layer.lineWidth || 2,
+          strokeDash: {
+            solid: [],
+            dashed: [8, 4],
+            dotted: [2, 3],
+            dashdot: [8, 3, 2, 3],
+          }[layer.lineDash || "solid"],
+          opacity: layer.opacity ?? 1,
+          point:
+            layer.mark === "errorband" && layer.pointMarkers ? true : undefined,
+        },
+        encoding: central,
+      });
+      if (layer.mark === "errorbar")
+        for (const bound of ["lower", "upper"])
+          layers.push({
+            data: { values },
+            mark: {
+              type: "tick",
+              size: 12,
+              opacity: layer.opacity ?? 1,
+              thickness: layer.lineWidth || 2,
+            },
+            encoding: {
+              ...central,
+              y: { field: `${layer.id}_${bound}`, type: "quantitative" },
+            },
+          });
+    }
     if (layer.mark === "box") {
       const base = {
         data: { values },
@@ -525,7 +709,16 @@ export async function resolveChart(
   engine: Engine,
   chart: Chart,
 ): Promise<ResolvedChart> {
-  if (chart.style) chartStyleSchema.parse(chart.style);
+  chart = {
+    ...chart,
+    style: chart.style ? chartStyleSchema.parse(chart.style) : undefined,
+    layers: chart.layers.map((l) => ({
+      ...l,
+      constantColor: l.constantColor
+        ? normalizeColor(l.constantColor)
+        : undefined,
+    })),
+  };
   if (
     chart.style?.arrangement === "subplots" &&
     chart.layers.some((l) => isMapMark(l.mark) || isPieMark(l.mark))

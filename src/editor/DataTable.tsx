@@ -34,7 +34,7 @@ export function DataTable({
               {table.columns.map((c) => (
                 <th
                   key={c.id}
-                  title={`${c.type} · ${c.role}${c.units ? " · " + c.units : ""}`}
+                  title={`${c.type}${c.type === "timestamp" ? " · " + (c.timeBasis || "utc") + (c.timeZone ? " / " + c.timeZone : "") : ""} · ${c.role}${c.units ? " · " + c.units : ""}`}
                 >
                   <span className="type-icon">
                     {c.type === "text"

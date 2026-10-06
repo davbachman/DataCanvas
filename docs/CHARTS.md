@@ -64,3 +64,7 @@ Styling, facets, and layer layouts carry into image/report exports. For online m
 ---
 
 Previous: [Regular expressions](REGEX.md) · [Guide contents](../README.md#instructions-for-use) · Next: [Chart sequence blocks](CHART-BLOCKS.md)
+
+## Teaching visualization options
+
+[Teaching workflows](TEACHING.md#categories-grouped-bars-and-accessible-line-styling) covers explicit category ordering and numeric categories, grouped side-by-side bars, named CSS colors with swatches, layer opacity, group-based dashes and point markers, and summary error bars/bands. **LINE STYLE**, **UNCERTAINTY**, and **BAR STACKING** blocks share the same chart settings as their inspector controls. Uncertainty tables expose valid/missing counts and the exact statistical method.

@@ -11,6 +11,9 @@ Add any operation from the toolbox, configure it in the inspector, run it, and e
 | **Filter rows** | Build a Boolean expression. Only true rows remain; false and unknown conditions are counted separately. |
 | **Select columns** | Choose keep/drop and explicit columns, or **Select by → Regular expression**. Pattern selection matches current display names on every run and preserves input order. [Pattern examples](REGEX.md). |
 | **Rename column** | Select a column and enter its new display name. Existing references retain the column's stable identity. |
+| **Rank within groups** | Choose ordered keys, missing policy, row_number/rank/dense_rank, and output label. [Worked examples](TEACHING.md#rank-and-select-within-groups). |
+| **First k within groups** | Keep leading positions per group, with an optional minimum valid group size. |
+| **Rename multiple columns** | Remove prefix/suffix or apply literal/RE2 replacement; preview names and collisions before running. IDs stay stable. |
 | **Sort rows** | Add ordered keys; set ascending/descending and missing-first/last for each. Stable row identity breaks remaining ties. |
 | **Seeded sample** | Choose a row count or fraction and a seed. Sampling is without replacement; a fraction takes the floor of fraction × population. The saved seed and unchanged source identities reproduce the sample. |
 
@@ -24,6 +27,7 @@ Tables have no analytical order without an explicit sort. Grouping, joins, appen
 | **Clean text** | Select trim, upper, lower, or case-sensitive literal replacement. Enter search/replacement text for replacement. |
 | **Regular expression** | Select a text column and filter, replace, or extract. Set RE2 pattern, flags, and action-specific options; test before running. See the [complete regex guide](REGEX.md). |
 | **Split column** | Select a literal delimiter and explicit comma-separated output names. For example, split `city,state` at a comma into two named columns. This is not regex splitting. |
+| **Set category order** | Set analytical role and explicit levels, including weekday/month presets, without changing storage. |
 | **Recode categories** | Add exact from/to mappings and decide whether unmatched values stay, become missing, or cause an error. |
 | **Handle missing** | Select columns and keep rows with missing values in any selected column, drop those rows, or replace nulls with a typed value. Blank text is separate from missing. |
 | **Find / remove duplicates** | Define duplicate-key columns. Identify duplicates for inspection, or remove them using an explicit ordering that determines which record survives. |
@@ -32,6 +36,8 @@ Tables have no analytical order without an explicit sort. Grouping, joins, appen
 A keyed correction is appropriate for a known, documented error; use a transformation for a general cleaning rule. Corrections are reproducible steps rather than direct edits to the source grid.
 
 ## Derive and reshape
+
+**Date & time:** construct dates/timestamps from components, add signed durations, extract components, format, and explicitly convert IANA timezones. See [time semantics and departure exercise](TEACHING.md#construct-adjust-and-interpret-dates).
 
 **Derive column:** name the new column and build an expression, such as `quantity * unit_price`. Check units and missing results. See [expression instructions](RECIPES.md#build-expressions) and [datetime examples](IMPORTING.md#work-with-dates-and-timestamps).
 

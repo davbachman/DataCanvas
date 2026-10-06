@@ -16,6 +16,8 @@ Runtime/build dependencies are pinned in `package.json` and `package-lock.json`.
 | DuckDB-Wasm / DuckDB Node API | MIT; local query engines |
 | Apache Arrow | Apache-2.0; typed bulk transfer to Wasm |
 | Vega / Vega-Lite / Vega-Embed | BSD-3-Clause; plotting |
+| moment-timezone 0.6.0 / moment | MIT; bundled IANA 2025b timezone rules, frozen into compiled SQL |
+| d3-color 3.1.0 | ISC; opaque CSS color-name normalization |
 | d3-geo | ISC; spherical geometry validation and map view fitting |
 | world-atlas 2.0.2 / Natural Earth 4.1.0 | ISC / public domain; bundled 1:110m country boundaries |
 | topojson-client | ISC; development-time boundary conversion |

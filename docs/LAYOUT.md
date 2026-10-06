@@ -78,3 +78,7 @@ These controls cover common figure layouts; the app does not execute arbitrary m
 ---
 
 Previous: [Chart sequence blocks](CHART-BLOCKS.md) · [Guide contents](../README.md#instructions-for-use) · Next: [Maps and basemaps](MAPPING.md)
+
+## Teaching visualization options
+
+[Teaching workflows](TEACHING.md#categories-grouped-bars-and-accessible-line-styling) covers explicit category ordering and numeric categories, grouped side-by-side bars, named CSS colors with swatches, layer opacity, group-based dashes and point markers, and summary error bars/bands. **LINE STYLE**, **UNCERTAINTY**, and **BAR STACKING** blocks share the same chart settings as their inspector controls. Uncertainty tables expose valid/missing counts and the exact statistical method.

@@ -1,6 +1,6 @@
-# Data Canvas semantics 1.0.0
+# Data Canvas semantics 2.0.0
 
-- Storage types: text, Boolean, signed 64-bit integer, decimal/real (DuckDB DOUBLE), date, timestamp. Analytical roles are independent. Dates are calendar dates; timestamps use UTC. Exact arbitrary-precision decimal storage is not currently a separate UI type.
+- Storage types: text, Boolean, signed 64-bit integer, decimal/real (DuckDB DOUBLE), date, timestamp. Analytical roles are independent. Dates are calendar dates; source timestamps use UTC; derived timestamps explicitly distinguish UTC and local wall time. Exact arbitrary-precision decimal storage is not currently a separate UI type.
 - Stable column IDs carry references. Rename changes labels, not identities. Derive/summary produce new IDs. Joins namespace each left/right occurrence, including self-joins. Missing columns cause errors; names never silently rebind a reference.
 - Sources retain bytes, import settings, SHA-256, and raw text. Imported numbers use explicit typed casts. Failures produce null plus diagnostics; Parse preserves source text and reports examples. Literal `NA` is not implicitly missing.
 - Tables are unordered unless explicitly sorted. Sort has ordered key fields, directions, null placement, and stable source-row-ID tie breaking. Grouping, joins, pivots, append, and sampling clear analytical ordering.
@@ -20,3 +20,7 @@
 - Required checks alter no rows and never prevent saving/exporting computed results. They prevent a passed-check status. A failed operation has no current output; dependent recipes are blocked. Generation IDs prevent obsolete worker responses from replacing newer results.
 
 The browser and native Linux paths both use DuckDB **1.5.4** and the same compiler. Tests compare actual results, not SQL similarity. Engine packages and application semantic versions are independent; see the lockfile and result manifest.
+
+## Teaching operations
+
+[Teaching workflows](TEACHING.md) specifies datetime components, fixed-duration units, ISO weeks, pinned IANA rules/DST policies, group ranking/null/tie behavior, label-only bulk renaming, category roles, grouped bars, and explicit uncertainty methods. These operations compile identically in the browser and headless runner. Named colors normalize to hex. Submission checks inspect completeness only; they do not grade data values.

@@ -1,3 +1,4 @@
+import { previewRename } from "../compiler/rename";
 import { previewRegex, matchColumnNames } from "../compiler/regex";
 import { wasmDB } from "./wasm";
 import { Engine } from "./core";
@@ -22,6 +23,9 @@ async function handle({ data }: MessageEvent) {
     } else if (kind === "regexPreview") {
       if (!engine) engine = new Engine(await wasmDB(), wasmDB);
       result = await previewRegex(engine.db, data.params, data.sample);
+    } else if (kind === "renamePreview") {
+      if (!engine) engine = new Engine(await wasmDB(), wasmDB);
+      result = await previewRename(engine.db, data.columns, data.params);
     } else if (kind === "columnRegexPreview") {
       if (!engine) engine = new Engine(await wasmDB(), wasmDB);
       result = await matchColumnNames(engine.db, data.columns, data.params);

@@ -354,6 +354,43 @@ export function validateCodeExport(
     );
 }
 
+/** Shared by the exporter and the teaching view: the exact executable step wrapper. */
+export function stepCode(
+  op: Operation,
+  before: Column[],
+  after: Column[],
+  language: CodeLanguage,
+  input: string,
+) {
+  const py = language === "python",
+    output = "step_" + op.id;
+  const native = nativeStep(op, before, after, language),
+    lines: string[] = [];
+  if (native) {
+    if (py) {
+      lines.push(`df = read_frame(${string(input)})`, ...native);
+      const projection = after
+        .map(
+          (c) => `CAST(n.${quote(c.id)} AS ${types[c.type]}) AS ${quote(c.id)}`,
+        )
+        .join(", ");
+      lines.push(
+        `save_frame(df, ${string(output)}, ${string(input)}, ${string(projection)})`,
+      );
+    } else {
+      lines.push(
+        `data <- tbl(con, ${string(input)})`,
+        ...native,
+        `save_table(data, ${string(output)})`,
+      );
+    }
+  } else lines.push(`sql_step(${string(`steps/${op.id}.sql`)})`);
+  return {
+    backend: native ? (py ? "pandas" : "dplyr/dbplyr") : "DuckDB SQL",
+    code: lines.join("\n"),
+  };
+}
+
 export function exportCode(
   bundle: Bundle,
   result: RunResult | undefined,
@@ -409,26 +446,9 @@ export function exportCode(
       code.push(
         `\n# ${index + 1}. ${op.kind} [${op.id}] — ${native ? (py ? "pandas" : "dplyr/dbplyr") : "DuckDB SQL (preserves Data Canvas semantics)"}`,
       );
-      if (native) {
-        if (py) {
-          code.push(`df = read_frame(${string(input)})`, ...native);
-          const projection = after.columns
-            .map(
-              (c) =>
-                `CAST(n.${quote(c.id)} AS ${types[c.type]}) AS ${quote(c.id)}`,
-            )
-            .join(", ");
-          code.push(
-            `save_frame(df, ${string(output)}, ${string(input)}, ${string(projection)})`,
-          );
-        } else {
-          code.push(
-            `data <- tbl(con, ${string(input)})`,
-            ...native,
-            `save_table(data, ${string(output)})`,
-          );
-        }
-      } else code.push(`sql_step(${string(`steps/${op.id}.sql`)})`);
+      code.push(
+        stepCode(op, step.before.columns, after.columns, language, input).code,
+      );
       coverage.push({
         recipe: recipe.name,
         operation: op.id,
@@ -483,7 +503,7 @@ export function exportCode(
   const backed = coverage.filter((c) => c.backend === "DuckDB SQL").length;
   put(
     "README.txt",
-    `Data Canvas ${py ? "Python / pandas" : "R / tidyverse"} export\n\n${p.title}\nRevision ${p.revision}. Exported from a complete successful run.\n\nSETUP\nExtract the entire ZIP into a folder.\n${py ? "Install Python 3.10+, then run: python -m pip install -r requirements.txt\nRun: python analysis.py" : "Install R 4.1+, then run: Rscript install.R\nUse DuckDB R package 1.5.4 or a compatible 1.5.4 patch release.\nRun: Rscript analysis.R\nIn RStudio, set the working directory to this folder and source analysis.R."}\n\nOUTPUTS\nThe script recreates every recipe in dependency order and writes display-name CSV files to results/.\nThe outputs dictionary/list contains ${py ? "pandas DataFrames" : "tibbles"} keyed by stable recipe ID. outputs.json maps IDs to names and types.\nStable column IDs in the script prevent renaming from breaking dependencies; project.json and outputs.json provide display names.\n\nBACKENDS AND LIMITS\n${coverage.length - backed} steps use ${py ? "pandas directly" : "dplyr/dbplyr on DuckDB"}; ${backed} use the original compiled DuckDB SQL. See coverage.json and per-step comments.\nDuckDB is required, for faithful transformation semantics, nulls, large integers, datetimes and lineage. This is not a DuckDB-free transpilation.\nRE2 regexes, parsing, joins, reshaping, sampling and other steps without a compatible native translation retain their compiled SQL rather than approximate pandas/R behavior. Supported numeric arithmetic uses pandas; R summaries use dplyr/dbplyr. Edit the corresponding steps/*.sql file to change those operations.\nThe included sources.json contains all typed source rows from the successful run, including normalized UTC timestamps and exact integers, not preview rows. Source parsing is not repeated in R or Python. original/ contains the original files, named by source ID. Editing those files alone does not change sources.json: reimport and re-export in Data Canvas to regenerate it.\nThe export reproduces this saved input/schema. Dynamic wide pivots and regex column selection are resolved for that schema. Re-export after changing source categories or columns.\nData-check diagnostics are the saved run's findings in diagnostics.json. Compiler-time guards (such as unique corrections, pivot conflicts and join limits) were checked for these inputs; they are not rerun if you manually edit source SQL or recipe steps.\nCharts, report layouts and SQL-workspace queries are preserved in project.json but are not executed or translated into plotting code.\nCSV uses an unquoted empty field for null and quoted empty text for a blank string. Consult outputs.json for types when importing CSV. Zero-column tables remain data frames and use a JSON row-count file instead of CSV. R normally uses integer64 for BIGINT outputs; columns containing -9223372036854775808 use character strings with a notice because R integer64 reserves that value for NA.\n`,
+    `Data Canvas ${py ? "Python / pandas" : "R / tidyverse"} export\n\n${p.title}\nRevision ${p.revision}. Exported from a complete successful run.\n\nSETUP\nExtract the entire ZIP into a folder.\n${py ? "Install Python 3.10+, then run: python -m pip install -r requirements.txt\nRun: python analysis.py" : "Install R 4.1+, then run: Rscript install.R\nUse DuckDB R package 1.5.4 or a compatible 1.5.4 patch release.\nRun: Rscript analysis.R\nIn RStudio, set the working directory to this folder and source analysis.R."}\n\nOUTPUTS\nThe script recreates every recipe in dependency order and writes display-name CSV files to results/.\nThe outputs dictionary/list contains ${py ? "pandas DataFrames" : "tibbles"} keyed by stable recipe ID. outputs.json maps IDs to names and types.\nStable column IDs in the script prevent renaming from breaking dependencies; project.json and outputs.json provide display names.\n\nBACKENDS AND LIMITS\n${coverage.length - backed} steps use ${py ? "pandas directly" : "dplyr/dbplyr on DuckDB"}; ${backed} use the original compiled DuckDB SQL. See coverage.json and per-step comments.\nDuckDB is required, for faithful transformation semantics, nulls, large integers, datetimes and lineage. This is not a DuckDB-free transpilation.\nRE2 regexes, parsing, joins, reshaping, sampling and other steps without a compatible native translation retain their compiled SQL rather than approximate pandas/R behavior. Supported numeric arithmetic uses pandas; R summaries use dplyr/dbplyr. Edit the corresponding steps/*.sql file to change those operations.\nThe included sources.json contains all typed source rows from the successful run, including timestamp clock fields and exact integers; timestamp timeBasis metadata distinguishes UTC from local wall time, not preview rows. Source parsing is not repeated in R or Python. original/ contains the original files, named by source ID. Editing those files alone does not change sources.json: reimport and re-export in Data Canvas to regenerate it.\nThe export reproduces this saved input/schema. Dynamic wide pivots and regex column selection are resolved for that schema. Re-export after changing source categories or columns.\nData-check diagnostics are the saved run's findings in diagnostics.json. Compiler-time guards (such as unique corrections, pivot conflicts and join limits) were checked for these inputs; they are not rerun if you manually edit source SQL or recipe steps.\nCharts, report layouts and SQL-workspace queries are preserved in project.json but are not executed or translated into plotting code.\nCSV uses an unquoted empty field for null and quoted empty text for a blank string. Consult outputs.json for types when importing CSV. Zero-column tables remain data frames and use a JSON row-count file instead of CSV. R normally uses integer64 for BIGINT outputs; columns containing -9223372036854775808 use character strings with a notice because R integer64 reserves that value for NA.\n`,
   );
   return {
     bytes: zipSync(files, { level: 6 }),

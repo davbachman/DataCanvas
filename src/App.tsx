@@ -1,3 +1,5 @@
+import { SubmissionChecklist } from "./editor/SubmissionChecklist";
+import { CodeView } from "./editor/CodeView";
 import { extractChartTransformation } from "./charts/extract";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -99,9 +101,9 @@ export default function App() {
       id: "clean",
     }),
     [operationId, setOperationId] = useState(""),
-    [view, setView] = useState<"workspace" | "overview" | "report" | "sql">(
-      "workspace",
-    ),
+    [view, setView] = useState<
+      "workspace" | "overview" | "report" | "sql" | "code"
+    >("workspace"),
     [editor, setEditor] = useState("Blocks"),
     [inspector, setInspector] = useState("Configure"),
     [bottom, setBottom] = useState("After"),
@@ -121,6 +123,7 @@ export default function App() {
     [showRecovery, setShowRecovery] =
       useState<{ bundle: Bundle; savedAt: number }[]>(),
     [showHelp, setShowHelp] = useState(false),
+    [submissionDialog, setSubmissionDialog] = useState<"settings" | "save">(),
     [maximized, setMaximized] = useState(false),
     [pane, setPane] = useState("Canvas"),
     [lineage, setLineage] = useState<string[]>([]),
@@ -408,11 +411,7 @@ export default function App() {
       );
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (bundleRef.current)
-          download(
-            bundleRef.current.project.title + ".datacanvas",
-            packBundle(bundleRef.current),
-          );
+        savePortable();
       }
       if (!typing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -426,6 +425,12 @@ export default function App() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [bundle, recipe, stepCount]);
+  function savePortable() {
+    const current = bundleRef.current;
+    if (!current) return;
+    if (current.project.submission?.enabled) setSubmissionDialog("save");
+    else download(current.project.title + ".datacanvas", packBundle(current));
+  }
   function open(kind: string, id: string) {
     setSelected({ kind, id });
     setOperationId("");
@@ -779,12 +784,11 @@ export default function App() {
               >
                 Import data…
               </button>
-              <button
-                onClick={() =>
-                  download(p.title + ".datacanvas", packBundle(bundle))
-                }
-              >
+              <button onClick={savePortable}>
                 Save portable project <kbd>⌘ S</kbd>
+              </button>
+              <button onClick={() => setSubmissionDialog("settings")}>
+                Assignment submission checklist…
               </button>
               <hr />
               <button onClick={exportTable}>
@@ -936,6 +940,13 @@ export default function App() {
           >
             <Code2 size={15} />
             SQL workspace
+          </button>
+          <button
+            className={view === "code" ? "active" : ""}
+            onClick={() => setView("code")}
+          >
+            <Code2 size={15} />
+            Code exports
           </button>
           <button
             className={view === "report" ? "active" : ""}
@@ -1158,7 +1169,9 @@ export default function App() {
               </button>
             </div>
           )}
-          {view === "overview" ? (
+          {view === "code" ? (
+            <CodeView project={p} result={result} />
+          ) : view === "overview" ? (
             <Overview
               project={p}
               onOpen={open}
@@ -1206,6 +1219,21 @@ export default function App() {
                 setNotice(
                   `${ids.length} source contributions selected. Use the contributing-records drawer below.`,
                 );
+              }}
+              onCategory={(columnId) => {
+                const op = newOperation(
+                  "categories",
+                  getColumns({ kind: "recipe", id: chart.inputRecipeId }),
+                );
+                op.params.columnId = columnId;
+                edit((p) => {
+                  p.recipes
+                    .find((r) => r.id === chart.inputRecipeId)!
+                    .operations.push(op);
+                });
+                open("recipe", chart.inputRecipeId);
+                setOperationId(op.id);
+                setInspector("Configure");
               }}
               onExtract={extractChart}
               onCreateFilter={(chart, expression) => {
@@ -1592,6 +1620,12 @@ export default function App() {
                           </div>
                           <Configure
                             operation={op}
+                            previewRename={(params, columns) =>
+                              client.current!.request("renamePreview", {
+                                params,
+                                columns,
+                              })
+                            }
                             previewColumnRegex={(params, columns) =>
                               client.current!.request("columnRegexPreview", {
                                 params,
@@ -2242,6 +2276,24 @@ export default function App() {
             setImportFile(undefined);
             setReplaceSource(undefined);
             open("source", source.id);
+          }}
+        />
+      )}
+      {submissionDialog && (
+        <SubmissionChecklist
+          project={p}
+          result={result}
+          client={client.current!}
+          saving={submissionDialog === "save"}
+          onChange={(settings) =>
+            edit((p) => {
+              p.submission = settings;
+            }, false)
+          }
+          onClose={() => setSubmissionDialog(undefined)}
+          onSave={() => {
+            download(p.title + ".datacanvas", packBundle(bundle));
+            setSubmissionDialog(undefined);
           }}
         />
       )}

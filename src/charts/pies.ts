@@ -1,6 +1,10 @@
 import { CanvasError, column, type Chart } from "../domain/model";
 import { Engine, displayValue, plainValue } from "../engine/core";
-import { quote as q, requireColumn } from "../compiler/expressions";
+import {
+  quote as q,
+  literal as l,
+  requireColumn,
+} from "../compiler/expressions";
 import type { ResolvedChart } from "./resolve";
 
 /** Slices are computed from the complete relation, never a preview. */
@@ -93,7 +97,7 @@ export async function resolvePie(
       "VALIDATION",
       "Pie and donut charts allow at most 50 categories. Filter or group categories in the recipe, or use a bar chart.",
     );
-  const sql = `SELECT *, (${q(stat)}::DOUBLE / sum(${q(stat)}::DOUBLE) OVER ())*100 AS ${q(share)} FROM (${grouped}) ORDER BY ${x}`;
+  const sql = `SELECT *, (${q(stat)}::DOUBLE / sum(${q(stat)}::DOUBLE) OVER ())*100 AS ${q(share)} FROM (${grouped}) ORDER BY ${category.levels?.length ? `CASE CAST(${x} AS VARCHAR) ${category.levels.map((v, i) => `WHEN ${l(v)} THEN ${i}`).join(" ")} ELSE ${category.levels.length} END,` : ""}${x}`;
   const name = "chart_" + layer.id;
   await engine.db.exec(`CREATE OR REPLACE TEMP VIEW ${q(name)} AS ${sql}`);
   const valueTitle =
@@ -167,6 +171,7 @@ export async function resolvePie(
         {
           mark: {
             type: "arc",
+            opacity: layer.opacity ?? 1,
             outerRadius: 140,
             innerRadius: layer.mark === "donut" ? 75 : 0,
             stroke: "white",

@@ -1,3 +1,4 @@
+import { ColorInput } from "../editor/ColorInput";
 import { StyleControls } from "./StyleControls";
 import { ChartBlocks } from "./ChartBlocks";
 import { isPieMark, canOrient } from "../domain/charts";
@@ -148,6 +149,7 @@ export function ChartView({
   revision,
   onContributors,
   onExtract,
+  onCategory,
   onCreateFilter,
 }: {
   chart: Chart;
@@ -157,6 +159,7 @@ export function ChartView({
   client: WorkerClient;
   revision: number;
   onContributors: (ids: string[]) => void;
+  onCategory: (columnId: string) => void;
   onExtract: (c: Chart) => void;
   onCreateFilter: (c: Chart, expression: Expr) => void;
 }) {
@@ -427,6 +430,8 @@ export function ChartView({
                 "box",
                 "heatmap",
                 "rule",
+                { value: "errorbar", label: "Error bars (summary)" },
+                { value: "errorband", label: "Uncertainty band (summary)" },
                 { value: "pie", label: "Pie" },
                 { value: "donut", label: "Donut" },
                 { value: "map_points", label: "Point map" },
@@ -452,6 +457,9 @@ export function ChartView({
                 options={[
                   { value: "auto", label: "Auto" },
                   { value: "none", label: "Overlay (no stacking)" },
+                  ...(layer.mark !== "histogram"
+                    ? [{ value: "grouped", label: "Grouped / side-by-side" }]
+                    : []),
                   { value: "zero", label: "Stacked" },
                   { value: "normalize", label: "Percentage stacked" },
                   { value: "center", label: "Centered stack" },
@@ -460,6 +468,122 @@ export function ChartView({
                   setLayer(i, "stack", v === "auto" ? undefined : v)
                 }
               />
+            )}
+            <Text
+              label="Layer opacity (0–1)"
+              type="number"
+              value={layer.opacity ?? (layer.mark === "errorband" ? 0.25 : 1)}
+              onChange={(v) =>
+                setLayer(i, "opacity", Math.max(0, Math.min(1, v)))
+              }
+            />
+            {["line", "rule", "errorbar", "errorband"].includes(layer.mark) && (
+              <details open>
+                <summary>Line styling & uncertainty</summary>
+                <Select
+                  label="Line dash"
+                  value={
+                    layer.lineDash ||
+                    (layer.mark === "rule" ? "dashed" : "solid")
+                  }
+                  options={["solid", "dashed", "dotted", "dashdot"]}
+                  onChange={(v) => setLayer(i, "lineDash", v)}
+                />
+                <Text
+                  label="Line width"
+                  type="number"
+                  value={layer.lineWidth || 2}
+                  onChange={(v) =>
+                    setLayer(i, "lineWidth", Math.max(0.5, Math.min(12, v)))
+                  }
+                />
+                {["line", "errorband"].includes(layer.mark) && (
+                  <>
+                    <label className="check">
+                      <input
+                        type="checkbox"
+                        checked={!!layer.pointMarkers}
+                        onChange={(e) =>
+                          setLayer(i, "pointMarkers", e.target.checked)
+                        }
+                      />
+                      Show point markers
+                    </label>
+                    <ColumnSelect
+                      label="Dash by group"
+                      columns={columns}
+                      value={layer.strokeDashField || ""}
+                      optional
+                      onChange={(v) =>
+                        setLayer(i, "strokeDashField", v || undefined)
+                      }
+                    />
+                    <p>
+                      Dash and marker shape provide alternatives to color. Use
+                      More encodings → shape field for group-based markers.
+                    </p>
+                  </>
+                )}
+                {["errorbar", "errorband"].includes(layer.mark) && (
+                  <>
+                    <Select
+                      label="Uncertainty method"
+                      value={layer.uncertainty?.method || "se"}
+                      options={[
+                        { value: "sd", label: "Mean ± sample SD" },
+                        { value: "se", label: "Mean ± standard error" },
+                        {
+                          value: "ci_normal",
+                          label: "Normal confidence interval for mean",
+                        },
+                      ]}
+                      onChange={(v) =>
+                        setLayer(i, "uncertainty", {
+                          multiplier: 1,
+                          confidence: 95,
+                          ...layer.uncertainty,
+                          method: v,
+                        })
+                      }
+                    />
+                    {layer.uncertainty?.method === "ci_normal" ? (
+                      <Select
+                        label="Confidence level"
+                        value={String(layer.uncertainty.confidence)}
+                        options={["90", "95", "99"]}
+                        onChange={(v) =>
+                          setLayer(i, "uncertainty", {
+                            ...layer.uncertainty,
+                            confidence: Number(v),
+                          })
+                        }
+                      />
+                    ) : (
+                      <Text
+                        label="SD / SE multiplier"
+                        type="number"
+                        value={layer.uncertainty?.multiplier || 1}
+                        onChange={(v) =>
+                          setLayer(i, "uncertainty", {
+                            method: "se",
+                            confidence: 95,
+                            ...layer.uncertainty,
+                            multiplier: Math.max(0.01, Math.min(10, v)),
+                          })
+                        }
+                      />
+                    )}
+                    <p>
+                      Computed from observations, grouped by X and mapped
+                      groups. Missing Y is counted and excluded; bounds need two
+                      valid observations. Normal CIs assume independent
+                      observations and a normal approximation. No bootstrap.
+                      Inspect Statistical tables for n, missing, mean, SD, SE,
+                      and bounds.
+                    </p>
+                  </>
+                )}
+              </details>
             )}
             {layer.mark === "rule" ? (
               <Text
@@ -581,9 +705,8 @@ export function ChartView({
               </label>
             ) : (
               <>
-                <Text
+                <ColorInput
                   label="Constant color (when unmapped)"
-                  type="color"
                   value={layer.constantColor || "#277c6c"}
                   onChange={(v) => setLayer(i, "constantColor", v)}
                 />
@@ -719,6 +842,26 @@ export function ChartView({
             ))}
           </details>
         )}
+        <details>
+          <summary>Data roles & category order</summary>
+          <p>
+            Numeric values can be categories without changing their storage
+            type. Add a Set category order step to this chart's input recipe;
+            the order then applies to all its charts and legends.
+          </p>
+          {columns.map((c) => (
+            <div key={c.id}>
+              <strong>{c.name}</strong> · {c.type} / {c.role}
+              {c.levels?.length ? (
+                <small> · {c.levels.join(" → ")}</small>
+              ) : null}
+              <button onClick={() => onCategory(c.id)}>
+                Set role / order: {c.name}
+              </button>
+            </div>
+          ))}
+        </details>
+
         <StyleControls chart={chart} onChange={onChange} />
         <Field label="Caption / limitations">
           <textarea

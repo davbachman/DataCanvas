@@ -28,6 +28,10 @@ Select a source or recipe with a current result, then choose **File → Export c
 
 After **Run all outputs**, choose **File → Export SQL + source assets** for a ZIP with `analysis.sql` and immutable source assets. Extract the archive and execute `analysis.sql` in DuckDB, for example `duckdb < analysis.sql` with the DuckDB command-line client installed. Source setup is embedded in the SQL; the archive also retains the original assets and `manifest.json`. The generated SQL uses stable physical IDs. Use the matching DuckDB engine version (currently 1.5.4); it is not generic SQL guaranteed to execute unchanged in another database.
 
+## Inspect code by visual step
+
+Open **Code exports**, select SQL, Python, or R, then a recipe step. The view displays the same executable wrapper as the download, backend coverage, compiled DuckDB SQL where applicable, and column labels alongside stable IDs. All new datetime, ranking, top-k, bulk-rename, and category steps retain their compiled DuckDB SQL to preserve semantics.
+
 ## Export Python / pandas
 
 1. Choose **Run all outputs** and wait for the current project revision to finish successfully.
@@ -84,3 +88,7 @@ Most R BIGINT outputs use `integer64`. If a column includes the minimum signed 6
 ---
 
 Previous: [SQL workspace](SQL.md) · [Guide contents](../README.md#instructions-for-use) · Next: [Troubleshooting and shortcuts](TROUBLESHOOTING.md)
+
+## Optional submission checks
+
+Use **File → Assignment submission checklist…** to require named recipe/chart outputs before saving. Checks report omissions, duplicate names, drafts, failed computations, and stale or absent required results. Saving unfinished work remains available. [Complete instructions](TEACHING.md#explain-code-and-check-submissions).

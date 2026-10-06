@@ -1,3 +1,5 @@
+import { compileDatetime } from "./datetime";
+import { previewRename } from "./rename";
 import { regexSQL, validateRegex, matchColumnNames } from "./regex";
 import {
   type Column,
@@ -83,6 +85,90 @@ export async function compileOperation(
       );
   };
   switch (o.kind) {
+    case "datetime": {
+      checkName(p.name);
+      if (cols.some((c) => c.id === p.outputId))
+        throw new CanvasError("SCHEMA", "Output column ID already exists");
+      const compiled = compileDatetime(p, cols, "dc_datetime_input");
+      columns.push(compiled.column);
+      sql = `SELECT *,${compiled.value} AS ${q(p.outputId)} FROM ${from} AS dc_datetime_input`;
+      const missing = await n(
+        `SELECT count(*) FROM (${sql}) dt WHERE ${q(p.outputId)} IS NULL`,
+      );
+      diagnostics.push({
+        severity: missing ? "advisory" : "info",
+        count: missing,
+        message: `${compiled.explanation} ${missing} missing outputs (including missing inputs).`,
+      });
+      break;
+    }
+    case "rank":
+    case "topk": {
+      const groups = names(p.groups),
+        partition = groups.length ? `PARTITION BY ${groups.join(",")} ` : "";
+      const valid = p.order
+        .map((k: any) => `${c(k.columnId)} IS NOT NULL`)
+        .join(" AND ");
+      const keys = p.order
+        .map(
+          (k: any) =>
+            `${c(k.columnId)} ${k.direction.toUpperCase()} NULLS ${k.nulls.toUpperCase()}`,
+        )
+        .join(",");
+      const order = `${p.missing === "exclude" ? `CASE WHEN ${valid} THEN 0 ELSE 1 END,` : ""}${keys}${p.method === "row_number" ? ',"__rid"' : ""}`;
+      const rank = `${p.missing === "exclude" ? `CASE WHEN ${valid} THEN ` : ""}${p.method}() OVER(${partition}ORDER BY ${order})${p.missing === "exclude" ? " END" : ""}`;
+      if (o.kind === "rank") {
+        checkName(p.name);
+        if (cols.some((c) => c.id === p.outputId))
+          throw new CanvasError("SCHEMA", "Rank output ID already exists");
+        columns.push(column(p.name, "integer", p.outputId));
+        sql = `SELECT *,${rank} AS ${q(p.outputId)} FROM ${from} ORDER BY ${[...groups, keys, '"__rid"'].join(",")}`;
+      } else {
+        sql = `SELECT ${[...cols.map((c) => q(c.id)), hidden].join(",")} FROM (SELECT *,${rank} AS __dc_rank,count(*) FILTER(WHERE ${valid}) OVER(${partition}) AS __dc_valid FROM ${from}) ranked WHERE __dc_rank<=${p.k}${p.requireFull ? ` AND __dc_valid>=${p.k}` : ""} ORDER BY ${[...groups, keys, '"__rid"'].join(",")}`;
+        reviewMeaning = true;
+      }
+      ordered = true;
+      diagnostics.push({
+        severity: "info",
+        message: `${p.method}: ${p.method === "row_number" ? "ties break by stable source-row identity" : "ties share a rank; stable row identity only orders their display"}. Missing ordering values: ${p.missing}. ${o.kind === "topk" ? (p.requireFull ? `Require at least ${p.k} observations with all ordering values present.` : "Smaller groups are kept.") : "Excluded missing values receive a missing rank."}`,
+      });
+      break;
+    }
+    case "rename_many": {
+      const preview = await previewRename(db, cols, p);
+      if (preview.some((x) => x.error))
+        throw new CanvasError(
+          "SCHEMA",
+          preview
+            .filter((x) => x.error)
+            .map((x) => `${x.before} → ${x.after}: ${x.error}`)
+            .join("; "),
+        );
+      columns = cols.map((c, i) => ({ ...c, name: preview[i].after }));
+      sql = `SELECT * FROM ${from}`;
+      diagnostics.push({
+        severity: "info",
+        message:
+          "Column labels changed; stable identities and downstream references retained.",
+        examples: preview,
+      });
+      break;
+    }
+    case "categories": {
+      c(p.columnId);
+      if (new Set(p.levels).size !== p.levels.length)
+        throw new CanvasError("VALIDATION", "Category levels must be unique.");
+      columns = cols.map((x) =>
+        x.id === p.columnId ? { ...x, role: p.role, levels: p.levels } : x,
+      );
+      sql = `SELECT * FROM ${from}`;
+      diagnostics.push({
+        severity: "info",
+        message:
+          "Role and category order updated without changing stored values. Unlisted categories follow the explicit levels.",
+      });
+      break;
+    }
     case "filter": {
       if (expressionType(p.expression, cols) !== "boolean")
         throw new CanvasError(
@@ -154,6 +240,15 @@ export async function compileOperation(
       break;
     }
     case "parse": {
+      if (
+        p.type === "timestamp" &&
+        p.timeBasis === "wall" &&
+        /(?<!%)%(?:z|Z)/.test(p.format)
+      )
+        throw new CanvasError(
+          "VALIDATION",
+          "Local wall-time parsing cannot include timezone directives %z or %Z. Parse offset-bearing text as UTC, then use Date & time → Convert timezone.",
+        );
       let value = `CAST(${c(p.columnId)} AS VARCHAR)`;
       if (p.decimalSeparator === ",") value = `replace(${value},',','.')`;
       let parsed =
@@ -168,7 +263,7 @@ export async function compileOperation(
       );
       diagnostics.push({
         severity: count ? "advisory" : "info",
-        message: `${count} parsing failures. Original field text remains in the immutable source. Timestamp policy: UTC.`,
+        message: `${count} parsing failures. Original field text remains in the immutable source. Timestamp basis: ${p.timeBasis || "utc"}.`,
         count,
         examples: count
           ? await db.query(
@@ -181,6 +276,9 @@ export async function compileOperation(
           ? {
               ...x,
               type: p.type,
+              timeBasis:
+                p.type === "timestamp" ? p.timeBasis || "utc" : undefined,
+              timeZone: undefined,
               role:
                 p.type === "date" || p.type === "timestamp"
                   ? "temporal"

@@ -1,3 +1,4 @@
+import { teachingFixture } from "../tests/fixtures/teaching";
 /** Execute the actual generated scripts in both languages and compare every cell. */
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,6 +17,7 @@ const languages = (
   process.argv.slice(2).length ? process.argv.slice(2) : ["python", "r"]
 ) as CodeLanguage[];
 const fixtures = [
+  { name: "teaching", load: teachingFixture },
   ...exampleInfo.map((e) => ({ name: e.id, load: () => example(e.id) })),
   { name: "edge-cases", load: codeExportFixture },
 ];

@@ -1,3 +1,4 @@
+import { checkSubmission } from "../domain/submission";
 import { readFile } from "node:fs/promises";
 import { unpackBundle } from "../persistence/bundle";
 import { Engine, validateBundle, type RunOptions } from "../engine/core";
@@ -127,6 +128,7 @@ export async function run(
         });
       }
     }
+    result.submission = checkSubmission(input.project, result);
     return result;
   } finally {
     await db.close();

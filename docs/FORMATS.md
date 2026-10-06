@@ -4,7 +4,7 @@
 
 A `.datacanvas` file is a ZIP containing `manifest.json` and the original source assets at `sources/<id>.<extension>`. Caches are not exported or trusted. Version 1 is self-contained; incomplete/relinked bundles are not supported.
 
-The canonical `Project` type and runtime validator live in `src/domain/model.ts`. `formatName` is `Data Canvas`, `schemaVersion` is `1`, and `semanticVersion` is `1.0.0`. A future version is rejected with a clear validation error; there are no earlier public formats requiring migration.
+The canonical `Project` type and runtime validator live in `src/domain/model.ts`. `formatName` is `Data Canvas`, `schemaVersion` is `2`, and `semanticVersion` is `2.0.0`. Other versions are rejected explicitly. This prerelease format change has no migration; all bundled examples use version 2.
 
 | Field | Meaning |
 | --- | --- |
@@ -27,7 +27,7 @@ Layer marks `map_points` and `choropleth` use `x` for longitude/region key and `
 
 The optional chart `map` object has `version: 1` or `2`, `projection` (`equalEarth`, `mercator`, `equirectangular`), `basemap` (`world`, `custom`), `featureKey`, `zoom`, `centerLongitude`, `centerLatitude`, `graticule`, and `colorScheme` (`blues`, `viridis`, `redblue`). Custom maps also embed normalized `boundaries` (GeoJSON FeatureCollection), optional `boundaryName`, and `attribution`. `$id` selects feature IDs; other join keys select properties. Validation and numeric limits are defined in `domain/geography.ts` and the [mapping guide](MAPPING.md).
 
-World geometry is pinned to the app's bundled Natural Earth/world-atlas version; custom geometry is retained directly in the manifest. A missing map object on a geographic chart uses the world/Equal Earth defaults. Project schema remains 1; earlier releases reject the new mark values instead of rendering them as Cartesian charts. Map version values other than 1 or 2 are rejected. Version 2 adds optional `tiles` (`none`, `openstreetmap`) and `overlayOpacity` (0–1). Online tiles require `projection: "mercator"`; the canonical validator rejects incompatible settings. Street zoom can exceed 2,000 (bounded by the schema), while the UI caps it at tile level 19. Older clients reject version 2 rather than silently dropping online settings. No imagery or provider credentials are saved in the project. Resolved geographic specifications embed geometry and preserve typed statistical tables and contributors in the same execution result format.
+World geometry is pinned to the app's bundled Natural Earth/world-atlas version; custom geometry is retained directly in the manifest. A missing map object on a geographic chart uses the world/Equal Earth defaults. Project schema is 2. Map version values other than 1 or 2 are rejected. Version 2 adds optional `tiles` (`none`, `openstreetmap`) and `overlayOpacity` (0–1). Online tiles require `projection: "mercator"`; the canonical validator rejects incompatible settings. Street zoom can exceed 2,000 (bounded by the schema), while the UI caps it at tile level 19. Older clients reject version 2 rather than silently dropping online settings. No imagery or provider credentials are saved in the project. Resolved geographic specifications embed geometry and preserve typed statistical tables and contributors in the same execution result format.
 
 ## Execution result v1
 
@@ -46,7 +46,7 @@ Values use the following typed JSON representation:
 | Integer | `{"type":"integer","value":"9007199254740993"}` |
 | Exact decimal literal | `{"type":"decimal","value":"1.2300"}` in expressions; current stored real columns use DOUBLE |
 | Date | `{"type":"date","value":"2025-01-31"}` |
-| Timestamp | `{"type":"timestamp","value":"2025-01-31 12:00:00"}` with project UTC policy |
+| Timestamp | `{"type":"timestamp","value":"2025-01-31 12:00:00"}` with column `timeBasis` (`utc` or `wall`; an absent annotation means UTC) and optional `timeZone` metadata |
 
 Integer tags preserve values beyond JavaScript's safe range. Date/timestamp tags preserve meaning. Numeric chart rendering converts integers to JavaScript numbers; use typed exports for exact large-integer analysis. No rounding, sorting, duplicate removal, or null normalization is performed to make outputs compare favorably.
 
@@ -55,3 +55,7 @@ Lineage is separate from visible columns: source ID and one-based imported data-
 `steps[recipeId]` contains each executed operation's before/after previews or originating error. `errors` identifies recipe, operation when available, stable code, and explanation. `status: ready` with `rowCount: 0` is a valid empty result. A failed computation has an error and no current table for that output. Required data-quality failures are diagnostics and can coexist with computed results.
 
 Resolved charts include the authored composition, a generated Vega-Lite specification, exact statistical tables, omitted-record counts, and explanatory notes. This exposes analytical intent without screenshot comparison.
+
+## Teaching metadata in project v2
+
+Columns can carry `timeBasis` and `timeZone`; their values remain timestamp clock fields. New operation kinds are `datetime`, `rank`, `topk`, `rename_many`, and `categories`, each operation version 1. Charts add grouped bars, line styling, layer opacity, and errorbar/errorband marks with explicit uncertainty parameters. Opaque named colors canonicalize to hex on save. Optional `submission` stores `{enabled, required: [{kind: "recipe" | "chart", name}]}`. Execution results optionally include `submission` completeness findings without changing API/result version 1. See [teaching semantics](TEACHING.md).

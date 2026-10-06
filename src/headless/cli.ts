@@ -52,7 +52,7 @@ async function main() {
       console.log(
         emit({
           status: "valid",
-          schemaVersion: 1,
+          schemaVersion: bundle.project.schemaVersion,
           projectId: bundle.project.projectId,
         }),
       );

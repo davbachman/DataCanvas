@@ -5,13 +5,11 @@ test("regex preview, row filtering and capture extraction use saved RE2 settings
   await page.goto("./");
   await expect(page.locator(".statusbar")).toContainText("Ready");
   await page.getByRole("checkbox", { name: "Auto preview" }).uncheck();
-  await page
-    .locator('input[accept=".csv,.tsv,.xlsx"]')
-    .setInputFiles({
-      name: "codes.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from("code\nAB-123\nnone\nCD-456\n"),
-    });
+  await page.locator('input[accept=".csv,.tsv,.xlsx"]').setInputFiles({
+    name: "codes.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("code\nAB-123\nnone\nCD-456\n"),
+  });
   await page.getByRole("button", { name: "Import table", exact: true }).click();
   await page.getByRole("button", { name: "Build a recipe" }).click();
   await page.getByRole("button", { name: "Recipe list", exact: true }).click();
@@ -24,7 +22,7 @@ test("regex preview, row filtering and capture extraction use saved RE2 settings
     .fill("([A-Z]+)-(\\d+)");
   await page.getByLabel("Pattern preview text").fill("AB-123");
   await page.getByRole("button", { name: "Test pattern", exact: true }).click();
-  await expect(page.locator(".regex-preview pre")).toContainText(
+  await expect(page.locator(".regex-preview pre").first()).toContainText(
     '"matched": true',
   );
   await page.getByRole("button", { name: "Run", exact: true }).click();
@@ -43,7 +41,11 @@ test("regex preview, row filtering and capture extraction use saved RE2 settings
   await expect(page.locator(".data-table")).toContainText("Number");
   await expect(page.locator(".data-table")).toContainText("123");
   await expect(page.locator(".table-footer")).toContainText("3 rows");
-  await page.getByRole("textbox", { name: "Pattern (RE2)", exact: true }).fill("(?<=A)B");
+  await page
+    .getByRole("textbox", { name: "Pattern (RE2)", exact: true })
+    .fill("(?<=A)B");
   await page.getByRole("button", { name: "Test pattern", exact: true }).click();
-  await expect(page.locator(".regex-preview pre")).toContainText("Invalid RE2");
+  await expect(page.locator(".regex-preview pre").first()).toContainText(
+    "Invalid RE2",
+  );
 });
