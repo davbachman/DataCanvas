@@ -288,6 +288,7 @@ async function resolveUnstyledChart(
         y: {
           field: stats.ids.lower,
           type: "quantitative",
+          ...(layer.mark === "errorband" ? { stack: null } : {}),
           title: requireColumn(input.columns, layer.y!).name,
         },
         y2: { field: stats.ids.upper },
@@ -475,6 +476,10 @@ async function resolveUnstyledChart(
         };
       }
     }
+    const markEncoding = { ...encoding };
+    // For areas, Vega-Lite treats `order` as a series grouping field. Let the
+    // X encoding sort the band; keep explicit path ordering on the mean line.
+    if (layer.mark === "errorband") delete markEncoding.order;
     layers.push({
       ...(brushable
         ? {
@@ -525,7 +530,7 @@ async function resolveUnstyledChart(
           : {}),
         tooltip: true,
       },
-      encoding,
+      encoding: markEncoding,
     });
     if (uncertainty) {
       const central = {
@@ -544,7 +549,8 @@ async function resolveUnstyledChart(
           ...(layer.mark === "errorband"
             ? { invalid: "break-paths-show-domains" }
             : {}),
-          filled: true,
+          // Lines must remain strokes; a filled mean path closes into a polygon.
+          filled: layer.mark === "errorbar",
           strokeWidth: layer.lineWidth || 2,
           strokeDash: {
             solid: [],
@@ -554,7 +560,9 @@ async function resolveUnstyledChart(
           }[layer.lineDash || "solid"],
           opacity: layer.opacity ?? 1,
           point:
-            layer.mark === "errorband" && layer.pointMarkers ? true : undefined,
+            layer.mark === "errorband" && layer.pointMarkers
+              ? { filled: true }
+              : undefined,
         },
         encoding: central,
       });
